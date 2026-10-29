@@ -106,22 +106,82 @@ Then start a new session.
 
 ---
 
-## For maintainers
+## Suggesting improvements
+
+These plugins are a work in progress, and the OCL plugin especially. If Claude got something wrong, missed a PIH convention, or you wish it could do something new:
+- open an issue at https://github.com/PIH/claude-plugins/issues, or
+- tell one of the maintainers. A short description of what you asked, what Claude did, and what it should have done is perfect.
+
+---
+
+## Developing the plugins
+
+### How a plugin is laid out
 
 ```
 .claude-plugin/marketplace.json   # the marketplace: lists the plugins in this repo
 plugins/
   ocl/
-    .claude-plugin/plugin.json    # plugin name, version, description
-    commands/setup.md             # /ocl:setup
+    .claude-plugin/plugin.json    # plugin name, version, description, license
+    README.md
+    commands/setup.md             # the /ocl:setup command
     skills/ocl-search/SKILL.md    # what Claude knows about OCL and the PIH source
 ```
 
-- **Add a plugin:** create `plugins/<name>/` with a `.claude-plugin/plugin.json`, then add an entry for it in `.claude-plugin/marketplace.json`.
-- **Validate before pushing:** `claude plugin validate .` (the marketplace) and `claude plugin validate plugins/<name>` (a plugin).
-- **Release changes:** bump `version` in the plugin's `plugin.json`, so users get the update.
-- **Test locally without pushing:** `/plugin marketplace add /path/to/claude-plugins`, then `/plugin install ocl@pih`.
-- **This repo is public.** Don't commit tokens, passwords, patient or employee data, or anything else that shouldn't be public.
+Most of the plugin's value is in **`SKILL.md`**. It's plain Markdown that Claude reads when the topic comes up:
+- The `description` at the top decides **when** Claude uses the skill. Name the words and situations that should trigger it.
+- The body is **how** to do the work: API calls, PIH conventions, safety rules and known quirks. Write it like notes for a capable new colleague, and explain *why*, not just *what*.
+
+A command like `commands/setup.md` is a reusable prompt that people run as `/ocl:setup`.
+
+### Workflow for revising the OCL skill
+
+1. **Get the code** (first time only), and make a branch:
+   ```bash
+   git clone git@github.com:PIH/claude-plugins.git ~/development/claude-plugins
+   cd ~/development/claude-plugins && git checkout -b <ticket>-<short-description>
+   ```
+
+2. **Run Claude Code with your local copy of the plugin.** From whatever folder you want to work in:
+   ```bash
+   claude --plugin-dir ~/development/claude-plugins/plugins/ocl
+   ```
+   This loads the plugin straight from your checkout, for that session only. If you also have the published plugin installed, disable it first with `/plugin disable ocl@pih` (and `/plugin enable ocl@pih` later), so you aren't running two versions at once.
+
+3. **Do real OCL work, and let the skill learn from it.** The best improvements come from actual tasks. When Claude discovers something, or you correct it, ask:
+   > *Update the ocl-search skill in ~/development/claude-plugins with what we just learned.*
+
+   Good additions:
+   - **API details that worked**, e.g. an endpoint, parameter, or response quirk.
+   - **PIH conventions**, e.g. "imaging orderables are mapped to DICOM with `Associated with`".
+   - **Mistakes to avoid**, with the reason.
+
+   Mark anything that's untested or unconfirmed as such, so Claude doesn't treat a guess as fact. Keep it general: no personal details, ticket numbers, tokens, or patient or employee data. **This repo is public.**
+
+4. **Restart to pick up edits.** Exit Claude Code and rerun the step 2 command, then try a request that exercises the change.
+
+5. **Validate:**
+   ```bash
+   claude plugin validate .
+   claude plugin validate plugins/ocl
+   ```
+
+6. **Bump the version** in `plugins/ocl/.claude-plugin/plugin.json`. Users only get the update when the version changes.
+   - **Patch** (`0.1.0` → `0.1.1`): fixes and small additions.
+   - **Minor** (`0.1.0` → `0.2.0`): new workflows or commands.
+
+7. **Commit, push and open a pull request.** Ask someone familiar with the PIH dictionary to review changes to conventions or write workflows. Once it's merged, users pick it up the next time they update (see *Keeping the plugin up to date* above).
+
+### Adding a new plugin
+
+1. Create `plugins/<name>/.claude-plugin/plugin.json` (copy the OCL one as a starting point), plus `skills/` and/or `commands/`.
+2. Add an entry for it in `.claude-plugin/marketplace.json`.
+3. Validate, and add a row to the plugin table at the top of this README.
+4. Asking Claude to *"scaffold a new plugin in this repo for <task>"* is a good way to start.
+
+### Optional: automated checks
+
+`claude plugin eval plugins/<name>` runs test cases stored in the plugin's `evals/` folder. It's worth adding a few for the OCL skill once its behavior settles, e.g. "is CIEL X already in PIH?", so changes don't quietly break things that used to work.
 
 ## License
 
