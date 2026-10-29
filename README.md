@@ -2,6 +2,17 @@
 
 Plugins for [Claude Code](https://claude.com/claude-code) that help with Partners In Health EMR and informatics work.
 
+## Why this repo exists
+
+As we use Claude for PIH work, we keep teaching it the same things: how our systems are set up, our conventions, which approaches work and which to avoid. This repo is where we save that knowledge as **skills** and share it. Anyone on the team benefits from what one person has figured out, and Claude starts from what we already know instead of from scratch.
+
+It has two goals:
+
+- **One place for the PIH team to build skills together.** Skills are written in plain language and kept in git, so changes are reviewed, tracked, and improved over time. Developers maintain the repo, but the knowledge comes from everyone who does the work.
+- **Skills anyone can use, with no git or GitHub knowledge needed.** Colleagues who aren't developers install the plugins once from inside Claude, then just ask Claude for what they need. Getting updates and suggesting improvements don't require git either. See [Getting started](#getting-started-no-coding-experience-needed) and [Suggesting improvements](#suggesting-improvements).
+
+## Plugins
+
 | Plugin | What it does |
 |---|---|
 | [`ocl`](plugins/ocl/) | Search and maintain the PIH concept dictionary in [Open Concept Lab (OCL)](https://app.v3.openconceptlab.org/): find concepts, see which sets they're in, pull concepts from CIEL, and add or edit PIH concepts and mappings. |
@@ -89,13 +100,22 @@ For changes, like cloning from CIEL, creating or editing concepts, or adding map
 
 ## Keeping the plugin up to date
 
-To pick up the latest version, type:
+Claude doesn't update PIH plugins automatically unless you turn that on. Automatic updates are only on by default for Anthropic's own marketplaces.
+
+**Turn on automatic updates (recommended, one time):**
+1. Type `/plugin` and press Enter.
+2. Open the **Marketplaces** tab.
+3. Select **pih**, then choose **Enable auto-update**.
+
+Claude then checks for updates in the background after a session starts. New versions take effect in your next session, or right away if you type `/reload-plugins`.
+
+**Or update by hand** whenever you want:
 
 ```
 /plugin marketplace update pih
 ```
 
-Then start a new session.
+Then type `/reload-plugins` or start a new session.
 
 ## Troubleshooting
 
@@ -166,7 +186,7 @@ A command like `commands/setup.md` is a reusable prompt that people run as `/ocl
    claude plugin validate plugins/ocl
    ```
 
-6. **Bump the version** in `plugins/ocl/.claude-plugin/plugin.json`. Users only get the update when the version changes.
+6. **Bump the version** in `plugins/ocl/.claude-plugin/plugin.json`. Because the plugin sets a `version`, users only get the update when it changes, even if they have automatic updates turned on.
    - **Patch** (`0.1.0` → `0.1.1`): fixes and small additions.
    - **Minor** (`0.1.0` → `0.2.0`): new workflows or commands.
 
