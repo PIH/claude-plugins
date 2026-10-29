@@ -1,0 +1,18 @@
+{
+  "name": "ocl",
+  "version": "0.1.0",
+  "description": "Search and maintain the PIH concept dictionary in Open Concept Lab (OCL): look up concepts, check set membership, clone from CIEL, and create or edit PIH concepts and mappings.",
+  "author": {
+    "name": "Partners In Health"
+  },
+  "license": "MPL-2.0",
+  "repository": "https://github.com/PIH/claude-plugins",
+  "keywords": [
+    "ocl",
+    "openconceptlab",
+    "openmrs",
+    "ciel",
+    "terminology",
+    "pih"
+  ]
+}

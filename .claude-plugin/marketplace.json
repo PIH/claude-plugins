@@ -1,0 +1,16 @@
+{
+  "name": "pih",
+  "owner": {
+    "name": "Partners In Health"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for Partners In Health EMR and informatics work"
+  },
+  "plugins": [
+    {
+      "name": "ocl",
+      "source": "./plugins/ocl",
+      "description": "Search and maintain the PIH concept dictionary in Open Concept Lab (OCL): look up concepts, check set membership, clone from CIEL, and create or edit PIH concepts and mappings."
+    }
+  ]
+}
