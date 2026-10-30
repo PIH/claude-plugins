@@ -155,7 +155,7 @@ Changes reach OpenMRS servers through released source versions, not the live sou
 - **Check the latest:** `GET /orgs/PIH/sources/PIH/versions/?limit=5&verbose=true` lists recent versions. They're numbered sequentially (`1.8.x`), each with a short description of what changed.
 - **Create the next one:** `POST /orgs/PIH/sources/PIH/versions/` with `{"id": "<next>", "description": "<what changed>", "released": true}`.
 - **Verify it:** `GET …/PIH/latest/` should return it, and `GET …/PIH/<version>/concepts/<id>/` reads that version's snapshot.
-- **Get the export:** the zip export is built separately. Right after creation, `GET …/PIH/<version>/export/` may return 204 (not ready). Workflow 6 covers downloading it into a distro.
+- **Get the export:** the zip export is built separately, which took about 4 minutes for 1.8.44. Until it's ready, `GET …/PIH/<version>/export/` returns 204 (not started) or 208 (being built), and once it's ready it returns 302. Wait for the 302 in a background loop rather than retrying by hand. Workflow 6 covers downloading it into a distro.
 - **Coordinate first:** releasing a version includes everyone's unreleased edits, not just yours. Check with the dictionary maintainers before releasing.
 
 ### 6. Put a released version's export into a PIH distro
@@ -164,7 +164,7 @@ OpenMRS servers load the PIH dictionary from an export zip committed to the dist
 
 - **No checkout needed:** `PIH/pihemr` may have an *Update OCL export* GitHub Action (Actions tab → Run workflow) that does all of this and opens a PR. If it exists, point non-developers to it. The steps below are for doing it locally.
 
-1. **Get the download URL.** `GET …/PIH/<version>/export/` with the token returns `302`, redirecting to a signed S3 URL such as `https://ocl-production-s3.s3.amazonaws.com/orgs/PIH/PIH_PIH_v1.8.43.2026-10-29_212531.zip?…`. Read the `Location` header (`curl -s -D - -o /dev/null …`), then download that URL in a separate curl *without* the token header. It's already signed, and this keeps the token from going to S3.
+1. **Get the download URL.** `GET …/PIH/<version>/export/` with the token returns `302` once the export is built (204 or 208 mean it isn't ready yet; see workflow 5), redirecting to a signed S3 URL such as `https://ocl-production-s3.s3.amazonaws.com/orgs/PIH/PIH_PIH_v1.8.43.2026-10-29_212531.zip?…`. Read the `Location` header (`curl -s -D - -o /dev/null …`), then download that URL in a separate curl *without* the token header. It's already signed, and this keeps the token from going to S3.
 2. **Check the zip** before using it. It holds a single `export.json`. Confirm its `id` is the version you wanted, and note how many `concepts` and `mappings` it has, so you can tell the user.
 3. **Find the distro folder.** In the pihemr distro (`PIH/pihemr`), it's `content/configuration/backend_configuration/ocl/`. The folder holds exactly one zip, which is the current export. Other PIH config repos (e.g. `config-pihemr/configuration/ocl/`) carry their own, often older, export. Update only the ones the user asks for.
 4. **Check master first.** Others commit export bumps often, sometimes several a week. `git fetch`, then compare the branch's zip with `origin/master`'s. If master already has a newer version than the branch, rebase before swapping, so you don't hit a conflict on the binary file.
