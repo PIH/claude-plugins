@@ -30,20 +30,6 @@ A tidy-up deletes a field, method or object that was used by reflection, templat
 - **Seen in:** TRUNK-5998, TRUNK-5158 then TRUNK-5223, TRUNK-5117 then TRUNK-5967 (unnoticed for 3 years)
 - **Module twist:** In reporting, removing a field or making an inner class static breaks stored XStream definitions (see N2). Form JSON and import-map overrides are the frontend's stored code.
 
-## F2 Changing exception types or failure modes; swallowing errors; ignored parameters
-A fix changes which exception is thrown or silently falls back to a default, so callers' handlers stop working or errors vanish.
-- **While writing:** Keep exception types stable. Never silently fall back to a default for an invalid parameter; fail clearly. Security hardening that blocks callers needs a migration note.
-- **When reviewing:** New catch-and-ignore blocks; changed `throws`; parameters accepted but unused.
-- **Seen in:** TRUNK-6823, TRUNK-6457, TRUNK-5395
-- **Module twist:** A global filter or privilege hardening in one module blocks other modules' flows (a DWR filter read only its own config, so other modules got 403, LUI-212; privileged GP reads broke the pre-login page, UIFR-225). Build allow-lists from all modules and exempt pre-auth paths. In REST, Spring `AccessDeniedException` was not mapped to 401/403 (RESTWS-1056).
-
-## F3 Changing defaults under existing installs; core absorbing module tables
-A new option or behavior is on by default, or core takes over a module's table, so upgraded installs behave differently or collide.
-- **While writing:** New options default to the old behavior. Test both an upgrade from the previous release and a fresh install.
-- **When reviewing:** New global properties defaulting to "on"; moved tables or Liquibase between core and a module.
-- **Seen in:** TRUNK-4513, TRUNK-4429 then TRUNK-4630, TRUNK-6449, TRUNK-5338
-- **Module twist:** Retrofitting authorization into a module that shipped open needs a role-grant migration in the same release (RESTWS-989 after TRUNK-6203). Process (tickets, Talk, backports, releases): see the `core-modules` skill.
-
 ## I1 ★ Merging without a failing-then-passing test; weakened tests; red CI
 A fix has no test that failed before and passes after, or tests are skipped or excluded to get green.
 - **While writing:** Write the test at the layer where the bug appears and watch it fail first. Never `@Ignore` or exclude an integration test to get green.
@@ -57,3 +43,17 @@ A change is cherry-picked to a maintenance branch although it is a feature, or w
 - **When reviewing:** Backports that add options or change defaults; a cherry-pick that applies cleanly but references code absent on the branch.
 - **Seen in:** TRUNK-4761, TRUNK-3069, TRUNK-6331
 - **Module twist:** Process (tickets, Talk, backports, releases): see the `core-modules` skill.
+
+## F2 Changing exception types or failure modes; swallowing errors; ignored parameters
+A fix changes which exception is thrown or silently falls back to a default, so callers' handlers stop working or errors vanish.
+- **While writing:** Keep exception types stable. Never silently fall back to a default for an invalid parameter; fail clearly. Security hardening that blocks callers needs a migration note.
+- **When reviewing:** New catch-and-ignore blocks; changed `throws`; parameters accepted but unused.
+- **Seen in:** TRUNK-6823, TRUNK-6457, TRUNK-5395
+- **Module twist:** A global filter or privilege hardening in one module blocks other modules' flows (a DWR filter read only its own config, so other modules got 403, LUI-212; privileged GP reads broke the pre-login page, UIFR-225). Build allow-lists from all modules and exempt pre-auth paths. In REST, Spring `AccessDeniedException` was not mapped to 401/403 (RESTWS-1056).
+
+## F3 Changing defaults under existing installs; core absorbing module tables
+A new option or behavior is on by default, or core takes over a module's table, so upgraded installs behave differently or collide.
+- **While writing:** New options default to the old behavior. Test both an upgrade from the previous release and a fresh install.
+- **When reviewing:** New global properties defaulting to "on"; moved tables or Liquibase between core and a module.
+- **Seen in:** TRUNK-4513, TRUNK-4429 then TRUNK-4630, TRUNK-6449, TRUNK-5338
+- **Module twist:** Retrofitting authorization into a module that shipped open needs a role-grant migration in the same release (RESTWS-989 after TRUNK-6203). Process (tickets, Talk, backports, releases): see the `core-modules` skill.

@@ -62,7 +62,7 @@ XML and object deserializers allow DTDs or arbitrary types, or code instantiates
 - **While writing:** Disable DTDs and external entities. Allowlist XStream types. Check `isAssignableFrom` before instantiating by name.
 - **When reviewing:** `new XStream(` without an allowlist; `DocumentBuilderFactory.newInstance(` with no `setFeature`; `Class.forName` on stored values.
 - **Seen in:** TRUNK-3942, TRUNK-6188, TRUNK-6547
-- **Module twist:** Reporting stores definitions as XStream XML, so tightening the allowlist can break stored definitions (see N2).
+- **Module twist:** Reporting added XStream whitelisting in `ReportingSerializer`, reverted it 4 days later, re-added it for core 2.7+ and then deferred it (reporting@3083d1d3, 2024-25). When tightening an allowlist, check that stored definitions still deserialize (see N2).
 
 ## G9 String-built SQL, shell, properties and log lines
 Values are concatenated into SQL, shell commands, property files or log lines instead of being bound or escaped.

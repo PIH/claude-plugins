@@ -15,6 +15,12 @@ A lazy-load error is silenced with `FetchType.EAGER`, or entities are held in st
 - **Seen in:** TRUNK-1167 (reverted), TRUNK-5740, TRUNK-809
 - **Module twist:** In reporting, evaluated datasets hold live entities that outlive the session in the report cache, on disk and in REST output. Cache uuids or plain values.
 
+## D1 ★ equals, hashCode and compareTo inconsistent
+`compareTo` without a unique tiebreak makes `TreeSet` and sorted maps drop "equal" objects; `equals` overrides break with Hibernate proxies and null ids.
+- **While writing:** End `compareTo` with a uuid tiebreak. Do not override `equals`/`hashCode` on `BaseOpenmrsObject` subclasses. Use `instanceof` and getters, never field access, so proxies work.
+- **When reviewing:** `compareTo` that ends on a date or name; `getClass() ==` comparisons; `equals` that reads fields directly; hashCode built from a mutable or null id.
+- **Seen in:** TRUNK-3645 / TRUNK-3652, TRUNK-5331, TRUNK-82, TRUNK-1080
+
 ## B2 Replacing managed collections; copy-constructor and cascade changes
 Assigning a new collection to a managed entity's field, or changing a copy constructor or cascade, makes Hibernate delete and re-insert children or fail on orphans.
 - **While writing:** Mutate the existing collection (`clear()` then `addAll`); never assign a new one in a setter. Test save, flush, clear, reload.
@@ -45,9 +51,3 @@ A test saves an entity and reads it back in the same session, so it sees the in-
 - **While writing:** Flush and clear the session before asserting on a fresh load.
 - **When reviewing:** Persistence tests with no `flush()`/`clear()` between save and assert.
 - **Seen in:** TRUNK-6411, TRUNK-6684
-
-## D1 ★ equals, hashCode and compareTo inconsistent
-`compareTo` without a unique tiebreak makes `TreeSet` and sorted maps drop "equal" objects; `equals` overrides break with Hibernate proxies and null ids.
-- **While writing:** End `compareTo` with a uuid tiebreak. Do not override `equals`/`hashCode` on `BaseOpenmrsObject` subclasses. Use `instanceof` and getters, never field access, so proxies work.
-- **When reviewing:** `compareTo` that ends on a date or name; `getClass() ==` comparisons; `equals` that reads fields directly; hashCode built from a mutable or null id.
-- **Seen in:** TRUNK-3645 / TRUNK-3652, TRUNK-5331, TRUNK-82, TRUNK-1080
