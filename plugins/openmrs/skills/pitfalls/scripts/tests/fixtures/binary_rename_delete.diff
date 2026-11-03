@@ -1,0 +1,17 @@
+diff --git a/web/src/main/webapp/images/logo.png b/web/src/main/webapp/images/logo.png
+index 1111111..2222222 100644
+Binary files a/web/src/main/webapp/images/logo.png and b/web/src/main/webapp/images/logo.png differ
+diff --git a/api/src/main/resources/old-changelog.xml b/api/src/main/resources/liquibase-renamed.xml
+similarity index 100%
+rename from api/src/main/resources/old-changelog.xml
+rename to api/src/main/resources/liquibase-renamed.xml
+diff --git a/api/src/main/resources/liquibase-gone.xml b/api/src/main/resources/liquibase-gone.xml
+deleted file mode 100644
+index 3333333..0000000
+--- a/api/src/main/resources/liquibase-gone.xml
++++ /dev/null
+@@ -1,4 +0,0 @@
+-<changeSet id="gone-1" author="core">
+-    <createTable tableName="gone"/>
+-    <addNotNullConstraint tableName="gone" columnName="x"/>
+-</changeSet>

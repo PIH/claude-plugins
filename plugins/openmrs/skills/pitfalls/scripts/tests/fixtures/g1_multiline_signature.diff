@@ -1,0 +1,11 @@
+diff --git a/api/src/main/java/org/openmrs/api/ThingService.java b/api/src/main/java/org/openmrs/api/ThingService.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/ThingService.java
++++ b/api/src/main/java/org/openmrs/api/ThingService.java
+@@ -30,4 +30,6 @@
+ public interface ThingService extends OpenmrsService {
+ 
++	Thing getThingByNameAndType(String name,
++	        String type);
+ 
+ }

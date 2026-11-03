@@ -1,0 +1,13 @@
+diff --git a/api/src/main/java/org/openmrs/api/ThingService.java b/api/src/main/java/org/openmrs/api/ThingService.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/ThingService.java
++++ b/api/src/main/java/org/openmrs/api/ThingService.java
+@@ -60,6 +60,6 @@
+ 	@Transactional(readOnly = true)
+ 	@Deprecated
+ 	@Override
+ 	@SuppressWarnings("unchecked")
+-	Thing getThing(Integer id);
++	Thing getThing(Long id);
+ 
+ }

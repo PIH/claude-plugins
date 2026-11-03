@@ -1,0 +1,13 @@
+diff --git a/api/src/main/java/org/openmrs/Thing.java b/api/src/main/java/org/openmrs/Thing.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/Thing.java
++++ b/api/src/main/java/org/openmrs/Thing.java
+@@ -40,5 +40,8 @@
+ 	@Id
+ 	private Integer id;
+ 
++	@ManyToOne
++	@JoinColumn(name = "visit_type_id")
++	private VisitType visitType;
+ 
+ 	public Integer getId() {

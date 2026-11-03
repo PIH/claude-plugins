@@ -1,0 +1,15 @@
+diff --git a/api/src/main/resources/liquibase-update-to-latest.xml b/api/src/main/resources/liquibase-update-to-latest.xml
+index 1111111..2222222 100644
+--- a/api/src/main/resources/liquibase-update-to-latest.xml
++++ b/api/src/main/resources/liquibase-update-to-latest.xml
+@@ -7100,4 +7100,10 @@
+     </changeSet>
+ 
++    <changeSet id="20261103-tweak" author="core" dbms="mysql,mariadb,postgresql">
++        <preConditions onFail="MARK_RAN">
++            <tableExists tableName="visit"/>
++        </preConditions>
++        <sql>select 1</sql>
++    </changeSet>
+ 
+     <changeSet id="existing-after" author="core">

@@ -1,0 +1,17 @@
+diff --git a/api/src/main/resources/liquibase-update-to-latest.xml b/api/src/main/resources/liquibase-update-to-latest.xml
+index 1111111..2222222 100644
+--- a/api/src/main/resources/liquibase-update-to-latest.xml
++++ b/api/src/main/resources/liquibase-update-to-latest.xml
+@@ -7100,4 +7100,12 @@
+     </changeSet>
+ 
++    <changeSet id="20261103-add-flag" author="core">
++        <preConditions onFail="MARK_RAN">
++            <tableExists tableName="visit"/>
++        </preConditions>
++        <addColumn tableName="visit">
++            <column name="flagged" type="tinyint(1)"/>
++        </addColumn>
++    </changeSet>
+ 
+     <changeSet id="existing-after" author="core">

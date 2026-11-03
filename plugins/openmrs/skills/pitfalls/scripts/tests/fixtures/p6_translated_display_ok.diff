@@ -1,0 +1,9 @@
+diff --git a/frontend/src/visits/visit-table.component.tsx b/frontend/src/visits/visit-table.component.tsx
+index 1111111..2222222 100644
+--- a/frontend/src/visits/visit-table.component.tsx
++++ b/frontend/src/visits/visit-table.component.tsx
+@@ -30,2 +30,4 @@
+ 	const { t } = useTranslation();
++	const isActive = status === 'ACTIVE';
++	const label = t('active', 'Active');
+ 	return <Tag>{label}</Tag>;
