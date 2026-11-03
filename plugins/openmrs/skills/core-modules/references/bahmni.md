@@ -12,9 +12,9 @@ The core design rules apply to them unchanged: keep changes generic, base them o
 | Discussion | OpenMRS Talk | OpenMRS Talk, Bahmni category, tagging the Bahmni core team (suggest names from recent activity and confirm with the user). |
 | Reviewers / mergers | OpenMRS reviewers | Almost entirely the Bahmni team. Check recent merged PRs. |
 | Review speed | Varies | PRs from outside the Bahmni team often wait months. Flag this early so the PIH ticket can plan around it. |
-| Release | A PIH developer may cut one (Claude prepares the steps; the user runs them) | Only Bahmni can release, through their GitHub workflow. PIH has to ask them. |
+| Release | A PIH developer may cut one (Claude prepares the steps; the user approves Claude running them, or runs them) | Only Bahmni can release, through their GitHub workflow. PIH has to ask them. |
 | Backports | Maintenance branches PIH runs | Effectively master only. A backport needs Bahmni's agreement. |
 
-If the user can't create a BAH ticket, the fallback is a Talk post in the Bahmni category asking for one (Claude drafts it, the user posts it). Don't fall back to a GitHub issue.
+If the user can't create a BAH ticket, the fallback is a Talk post in the Bahmni category asking for one (Claude drafts it; the user posts it, since Claude has no Talk access). Don't fall back to a GitHub issue.
 
 When PIH work depends on a change to a Bahmni module, say early that the timeline depends on Bahmni's review and release. That way the PIH ticket can plan for waiting or for an interim PIH-side approach.

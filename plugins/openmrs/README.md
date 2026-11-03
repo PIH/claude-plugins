@@ -26,7 +26,7 @@ Type this in Claude Code, then start a new session:
 - **Follows the process:** a PIH ticket first, then a Talk post (big changes) or an upstream ticket (small changes); OpenMRS branch and PR conventions; reviewers suggested and confirmed with you; backports only to the versions PIH runs, with Rwanda asked about separately; and no release without asking.
 - **Knows Bahmni is different:** for Bahmni-owned modules such as appointments, Claude uses BAH tickets in Bahmni's Jira, reminds you about the CLA, and warns that reviews can be slow and that only Bahmni can release.
 
-**Claude prepares, you act.** Claude never posts on Talk, files tickets, opens PRs, requests reviewers or cuts releases. It gives you ready-to-paste text and the exact commands to run. It also asks before pushing a branch.
+**Claude plans, you decide.** Claude never posts, files tickets, pushes, opens PRs, requests reviewers or cuts releases on its own. It prepares the text and the exact commands, lists what it plans to do, and you decide each action: let Claude do it, edit it, or do it yourself. Where Claude has no access (OpenMRS Jira, Talk), you always do it yourself.
 
 ## Requirements
 

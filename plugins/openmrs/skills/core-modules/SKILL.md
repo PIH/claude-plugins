@@ -77,7 +77,7 @@ Follow the standard OpenMRS pattern: a ticket in the right OpenMRS Jira project,
 
 ### 4. Reviewers
 
-Look at who is currently reviewing and merging in the repo (recent merged PRs, CODEOWNERS if present). Suggest a reviewer and confirm with the user. You never request a review yourself.
+Look at who is currently reviewing and merging in the repo (recent merged PRs, CODEOWNERS if present). Suggest a reviewer and confirm with the user. Requesting the review is a public step (see Public steps).
 
 ### 5. Backports
 
@@ -92,11 +92,28 @@ Read versions from those files every time; never from memory.
 
 ### 6. Releases
 
-Never cut a release, even after the user agrees one is needed. Say when a release is needed, prepare the steps, and hand them to the user (see Hand-off).
+Never cut a release on your own. Say when a release is needed, prepare the steps, and treat the release as a planned public action that the user approves or runs themselves (see Public steps).
 
-## Hand-off: Claude prepares, the user acts
+## Public steps: plan first, the user decides
 
-Claude never carries out public steps, even after approval, and never offers to (say "I'll draft the ticket", not "I'll open the ticket"). That covers Talk posts, upstream Jira tickets (OpenMRS or BAH), links between PIH and upstream tickets, opening PRs, requesting reviewers, PR comments and releases. Prepare them as ready-to-paste text (ticket title and description, PR title and body, Talk post) plus the exact command where one applies (for example a `gh pr create ...` line), and hand them to the user. Local work (branches, commits, builds, tests) is fine. Pushing a branch is outward-facing, so ask first.
+Public or outward-facing steps include:
+- Talk posts
+- upstream Jira tickets (OpenMRS or BAH)
+- links between PIH and upstream tickets
+- pushing a branch
+- opening PRs
+- requesting reviewers
+- PR and ticket comments
+- releases
+
+Never take one on your own. For each one:
+
+1. **Prepare it:** ready-to-paste text (ticket title and description, PR title and body, Talk post, comment), plus the exact command where one applies (for example a `gh pr create ...` line).
+2. **List the planned actions** and where each one goes, for example "1. push branch X to origin; 2. open a PR against openmrs/openmrs-module-emrapi; 3. comment on UHM-456".
+3. **Let the user decide each action:** approve it (then you carry it out), edit it first, or do it themselves. Often they'll prefer to do it by hand, and that's their call. Never treat approval of one action as approval of others.
+4. **Where you have no access** (for example OpenMRS Jira, Bahmni Jira, Talk), hand over the text and a link, and leave that action to the user.
+
+Local work (branches, commits, builds, tests) needs no approval.
 
 ## Stop and ask when
 
@@ -106,5 +123,5 @@ Claude never carries out public steps, even after approval, and never offers to 
 4. You need to choose who to tag on Talk or who to request as reviewer.
 5. A Rwanda backport might be needed.
 6. A release is needed.
-7. Anything is public or outward-facing.
+7. Anything is public or outward-facing: list the planned actions and wait for the user's decision on each.
 8. A PIH-distro module is in neither refapp and not on either list above.
