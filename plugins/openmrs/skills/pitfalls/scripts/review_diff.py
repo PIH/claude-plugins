@@ -224,13 +224,22 @@ def _new_changesets(h: Hunk) -> List[List[Line]]:
     return blocks
 
 
+def _closes_before_opening(lines: List[Line], start: int) -> bool:
+    """True if, from `start` on, a </changeSet> shows up before any <changeSet."""
+    for ln in lines[start:]:
+        if CHANGESET_OPEN.search(ln.text):
+            return False
+        if CHANGESET_CLOSE.search(ln.text):
+            return True
+    return False
+
+
 def _a1(fd: FileDiff) -> List[Finding]:
     out: List[Finding] = []
     for h in fd.hunks:
         state = "unknown"  # unknown | none | existing | new
         reported = False
-        seen_xml_ctx = False
-        for ln in h.lines:
+        for idx, ln in enumerate(h.lines):
             opens = bool(CHANGESET_OPEN.search(ln.text))
             closes = bool(CHANGESET_CLOSE.search(ln.text))
             if opens:
@@ -239,19 +248,15 @@ def _a1(fd: FileDiff) -> List[Finding]:
             flag = False
             if state == "existing" and ln.kind in "+-":
                 flag = True
-            elif state == "unknown":
-                if ln.kind == "-" and not closes:
-                    flag = True
-                elif ln.kind == "+" and seen_xml_ctx and not closes:
-                    flag = True
+            elif (state == "unknown" and ln.kind in "+-" and not closes
+                  and _closes_before_opening(h.lines, idx)):
+                flag = True
             if flag and not reported:
                 out.append(_finding(
                     fd, ln, "A1", "high",
                     "edit inside an existing changeSet; released changeSets must not "
                     "change, add a new changeSet instead"))
                 reported = True
-            if state == "unknown" and ln.kind == " " and ln.text.strip().startswith("<"):
-                seen_xml_ctx = True
             if closes:
                 state = "none"
                 reported = False
@@ -300,33 +305,49 @@ def _a3(fd: FileDiff) -> List[Finding]:
     return out
 
 
-A5_NAME_ATTRS = re.compile(
-    r'<(?:column\s[^>]*?\bname|createTable\s[^>]*?\btableName|renameTable\s[^>]*?\bnewTableName|'
+A5_OPEN_ATTRS = re.compile(
+    r'<(?:createTable\s[^>]*?\btableName|renameTable\s[^>]*?\bnewTableName|'
     r'renameColumn\s[^>]*?\bnewColumnName)\s*=\s*"(\w+)"')
+A5_COLUMN_NAME = re.compile(r'<column\s[^>]*?\bname\s*=\s*"(\w+)"')
+A5_DDL_CONTEXT = re.compile(r"<(?:ext:)?(createTable|addColumn|createIndex)\b")
+A5_DML_CONTEXT = re.compile(r"<(?:ext:)?(insert|update|delete|loadData|loadUpdateData)\b")
+A5_CONTEXT_CLOSE = re.compile(
+    r"</(?:ext:)?(?:createTable|addColumn|createIndex|insert|update|delete|loadData|loadUpdateData)>")
 A5_DBMS = re.compile(r'\bdbms\s*=\s*"([^"]*)"')
 
 
 def _a5(fd: FileDiff) -> List[Finding]:
     out: List[Finding] = []
-    for ln in _added(fd):
-        t = ln.text
-        for m in A5_DBMS.finditer(t):
-            engines = {e.strip().lower() for e in m.group(1).split(",")}
-            if "mysql" in engines and not engines & {"mariadb", "postgresql"}:
-                out.append(_finding(
-                    fd, ln, "A5", "medium",
-                    'dbms="mysql" only; changes must also run on PostgreSQL '
-                    "(add postgresql/mariadb or use portable change types)"))
-        if re.search(r"tinyint", t, re.I):
-            out.append(_finding(
-                fd, ln, "A5", "medium",
-                "tinyint is MySQL-specific; use type=\"boolean\" or a portable type"))
-        for m in A5_NAME_ATTRS.finditer(t):
-            name = m.group(1)
-            if name.lower() in RESERVED_WORDS:
-                out.append(_finding(
-                    fd, ln, "A5", "medium",
-                    f"'{name}' is a reserved word on MySQL 8 / PostgreSQL; pick another name"))
+    for h in fd.hunks:
+        ctx = None  # None (unknown or outside) | "ddl" | "dml"
+        for ln in _new_side(h):
+            t = ln.text
+            if A5_DDL_CONTEXT.search(t):
+                ctx = "ddl"
+            elif A5_DML_CONTEXT.search(t):
+                ctx = "dml"
+            if ln.kind == "+":
+                for m in A5_DBMS.finditer(t):
+                    engines = {e.strip().lower() for e in m.group(1).split(",")}
+                    if "mysql" in engines and not engines & {"mariadb", "postgresql"}:
+                        out.append(_finding(
+                            fd, ln, "A5", "medium",
+                            'dbms="mysql" only; changes must also run on PostgreSQL '
+                            "(add postgresql/mariadb or use portable change types)"))
+                if re.search(r"tinyint", t, re.I):
+                    out.append(_finding(
+                        fd, ln, "A5", "medium",
+                        "tinyint is MySQL-specific; use type=\"boolean\" or a portable type"))
+                names = [m.group(1) for m in A5_OPEN_ATTRS.finditer(t)]
+                if ctx == "ddl":
+                    names += [m.group(1) for m in A5_COLUMN_NAME.finditer(t)]
+                for name in names:
+                    if name.lower() in RESERVED_WORDS:
+                        out.append(_finding(
+                            fd, ln, "A5", "medium",
+                            f"'{name}' is a reserved word on MySQL 8 / PostgreSQL; pick another name"))
+            if A5_CONTEXT_CLOSE.search(t):
+                ctx = None
     return out
 
 
@@ -392,13 +413,13 @@ def _b2(fd: FileDiff) -> List[Finding]:
     return out
 
 
-DISCARDED_CALL = re.compile(r"^\s*[\w.()]*\.(?:saveOrUpdate|merge)\(.*\)\s*;\s*$")
+DISCARDED_CALL = re.compile(r"^\s*[\w.()]*\.merge\(.*\)\s*;\s*$")
 
 
 def _b5(fd: FileDiff) -> List[Finding]:
     return [
         _finding(fd, ln, "B5", "low",
-                 "result of merge()/saveOrUpdate() is discarded; use the returned instance")
+                 "result of merge() is discarded; use the returned instance")
         for ln in _added(fd)
         if DISCARDED_CALL.match(ln.text) and "=" not in ln.text.split("(")[0]
         and not ln.text.strip().startswith("return")
@@ -436,30 +457,63 @@ def _g1_applies(path: str) -> bool:
     return path.endswith("Service.java")
 
 
+G1_SIGNATURE = re.compile(r"\s*(?:public\s+)?(?:default\s+)?[\w<>\[\],.? ]+?\s+\w+\s*\(")
+G1_NOT_SIGNATURE = re.compile(r"\s*(?:private|protected|static|return|throw|new|else|if|for|while)\b")
+G1_CLASS_DECL = re.compile(r"\b(?:class|enum)\s+\w+")
+
+
+def _g1_ends_as_declaration(view: List[Line], i: int) -> bool:
+    """The (possibly multi-line) signature ends in ';', or is a 'default' method."""
+    joined = ""
+    for ln in view[i:i + 8]:
+        joined += " " + ln.text
+        m = re.search(r"[;{]", joined)
+        if m:
+            return joined[m.start()] == ";" or joined.lstrip().startswith("default ")
+    return False
+
+
+def _g1_authorized_above(view: List[Line], i: int) -> bool:
+    """Walk up over annotations and comments (any length) to the previous member."""
+    in_block = False
+    for prev in reversed(view[:i]):
+        pt = prev.text.strip()
+        if in_block:  # inside a /** ... */ block, walking upward to its opening
+            if pt.startswith("/*"):
+                in_block = False
+            continue
+        if not pt or pt.startswith("//"):
+            continue
+        if pt.endswith("*/"):
+            in_block = not pt.startswith("/*")
+            continue
+        if pt.startswith("*"):  # unterminated block seen from below: keep walking
+            continue
+        if "@Authorized" in pt:
+            return True
+        if pt.endswith((";", "{", "}")):
+            return False
+    return False
+
+
 def _g1(fd: FileDiff) -> List[Finding]:
     out: List[Finding] = []
     in_api = "/api/" in "/" + fd.path and "/impl/" not in fd.path
     for h in fd.hunks:
         view = _new_side(h)
-        is_interface = in_api or any(re.search(r"\binterface\b", x.text) for x in view)
-        if not is_interface:
+        code = [x.text for x in view if not _comment_or_blank(x.text)]
+        if any(G1_CLASS_DECL.search(t) for t in code):
+            continue  # only interfaces count
+        if not (in_api or any(re.search(r"\binterface\b", t) for t in code)):
             continue
         for i, ln in enumerate(view):
             t = ln.text
             if ln.kind != "+" or _comment_or_blank(t) or t.strip().startswith(("@", "import", "package")):
                 continue
-            if re.search(r"\b(?:class|interface|enum)\b", t) or not re.match(
-                    r"\s*(?:public\s+)?(?:default\s+)?[\w<>\[\],.? ]+?\s+\w+\s*\(", t):
+            if (G1_NOT_SIGNATURE.match(t) or re.search(r"\b(?:interface)\b", t)
+                    or not G1_SIGNATURE.match(t) or not _g1_ends_as_declaration(view, i)):
                 continue
-            authorized = False
-            for prev in reversed(view[max(i - 15, 0):i]):
-                pt = prev.text.strip()
-                if "@Authorized" in pt:
-                    authorized = True
-                    break
-                if pt.endswith((";", "{", "}")):
-                    break
-            if not authorized:
+            if not _g1_authorized_above(view, i):
                 out.append(_finding(
                     fd, ln, "G1", "high",
                     "service method has no @Authorized; it fails open for any caller"))

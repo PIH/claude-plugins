@@ -61,6 +61,9 @@ class LiquibaseTests(unittest.TestCase):
         h = hits("a1_edit_mid_changeset", "A1")
         self.assertEqual([f.confidence for f in h], ["high"])
 
+    def test_a1_added_include_not_flagged(self):
+        self.assertEqual(hits("a1_include_added", "A1"), [])
+
     def test_a1_new_changeset_not_flagged(self):
         self.assertEqual(hits("a1_new_changeset", "A1"), [])
 
@@ -86,6 +89,9 @@ class LiquibaseTests(unittest.TestCase):
         for word in ("rank", "condition", "order"):
             self.assertIn(word, msgs)
         self.assertEqual(hits("a5_portable_ok", "A5"), [])
+
+    def test_a5_insert_existing_column_not_flagged(self):
+        self.assertEqual(hits("a5_insert_existing_column_ok", "A5"), [])
 
     def test_a5_tinyint(self):
         h = hits("a5_tinyint", "A5")
@@ -126,6 +132,9 @@ class JavaTests(unittest.TestCase):
         self.assertEqual(confs("b5_discarded_merge", "B5"), ["low"])
         self.assertEqual(hits("b5_merge_result_used", "B5"), [])
 
+    def test_b5_saveorupdate_not_flagged(self):
+        self.assertEqual(hits("b5_saveorupdate_ok", "B5"), [])
+
     def test_c2_getall_stream_filter(self):
         self.assertEqual(confs("c2_getall_stream_filter", "C2"), ["medium"])
         self.assertEqual(hits("c2_sql_filter_ok", "C2"), [])
@@ -146,6 +155,20 @@ class JavaTests(unittest.TestCase):
 
     def test_g1_annotation_above_javadoc_ok(self):
         self.assertEqual(hits("g1_annotation_above_javadoc_ok", "G1"), [])
+
+    def test_g1_javadoc_with_link_and_long_javadoc_ok(self):
+        self.assertEqual(hits("g1_link_javadoc_ok", "G1"), [])
+        self.assertEqual(hits("g1_long_javadoc_ok", "G1"), [])
+
+    def test_g1_javadoc_does_not_hide_previous_member(self):
+        self.assertEqual(confs("g1_javadoc_after_previous_member", "G1"), ["high"])
+
+    def test_g1_concrete_class_ignored(self):
+        self.assertEqual(hits("g1_concrete_class_ok", "G1"), [])
+        self.assertEqual(hits("g1_body_lines_no_class_ctx_ok", "G1"), [])
+
+    def test_g1_multiline_signature(self):
+        self.assertEqual(confs("g1_multiline_signature", "G1"), ["high"])
 
     def test_g1_non_service_file_ignored(self):
         self.assertEqual(hits("g1_non_service_file", "G1"), [])
