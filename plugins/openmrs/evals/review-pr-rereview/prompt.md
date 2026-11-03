@@ -3,7 +3,7 @@ max_turns: 10
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Re-review this PR. I have already confirmed the ticket (UHM-520, PIH Jira, \"Validate lab order quantity\") contains no patient data or PHI. Note: gh, Jira and network tools are unavailable in this session, and no repository is checked out. Everything you need is pasted below as the provided data. Work from it and do not try to fetch anything. Nothing will be posted in this session.
+Re-review this PR. I have already confirmed the ticket (UHM-520, PIH Jira, "Validate lab order quantity") contains no patient data or PHI. Note: gh, Jira and network tools are unavailable in this session, and no repository is checked out. Everything you need is pasted below as the provided data. Work from it and do not try to fetch anything. Nothing will be posted in this session.
 
 PR: example-org/openmrs-module-example#92. My earlier review (on commit abc111) left three threads:
  1. OrderValidator.java:30, blocking: quantity is not checked for null, NPE possible.

@@ -3,7 +3,7 @@ max_turns: 10
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Review this PR against its PIH ticket. I have already confirmed the ticket text below contains no patient data or PHI. Note: gh, Jira and network tools are unavailable in this session, and no repository is checked out. Everything you need is pasted below as the provided data. Work from it and do not try to fetch anything. Nothing will be posted in this session; I want your drafted review.
+Review this PR against its PIH ticket. I have already confirmed the ticket text below contains no patient data or PHI. Note: gh, Jira and network tools are unavailable in this session, and no repository is checked out. Everything you need is pasted below as the provided data. Work from it and do not try to fetch anything. Nothing will be posted in this session; I want your drafted review: the PR review summary and a comment for the ticket.
 
 Ticket UHM-456 (PIH Jira): "Validate referral form"
 Requirements:
