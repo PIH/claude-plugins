@@ -16,7 +16,7 @@ Type this in Claude Code, then start a new session:
 
 | | |
 |---|---|
-| **Skill: `ocl-search`** | Loads automatically when you ask about OCL, CIEL, or PIH concepts. It teaches Claude the OCL API and how the PIH source is organized: ID numbering, mapping conventions, how concept sets are stored, and how to clone from CIEL, create and edit concepts, add mappings, and release source versions safely. |
+| **Skill: `ocl-search`** | Loads automatically when you ask about OCL, CIEL, or PIH concepts. It teaches Claude the OCL API and how the PIH source is organized: ID numbering, mapping conventions, how concept sets are stored, and how to clone from CIEL, create and edit concepts, add mappings, and release source versions safely. Includes a read-only script that checks cloned concepts (or a whole export) for mappings the OCL clone got wrong. |
 | **Command: `/ocl:setup`** | Checks that your OCL API token is set up, and walks you through it if not. |
 
 ## What it can do
@@ -24,7 +24,7 @@ Type this in Claude Code, then start a new session:
 - Search the PIH and CIEL dictionaries, and give you links to view the full concepts in OCL.
 - Show which concept sets a concept belongs to, or what's in a set.
 - Check whether a CIEL concept is already in PIH.
-- Preview, then clone, CIEL concepts into PIH.
+- Preview, then clone, CIEL concepts into PIH, and check the clone for broken mappings.
 - Create and edit PIH concepts, names, translations and mappings.
 - Release a new version of the PIH source.
 

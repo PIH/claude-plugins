@@ -62,16 +62,19 @@ The concept id is a PIH number, never the CIEL number. Concepts fall into three 
 |---|---|---|---|
 | Legacy, imported from OpenMRS | < 20000 | the OpenMRS UUID; CIEL-derived ones keep the CIEL UUID (`145851AAAA…`) | `SAME-AS PIH:<id>`, `SAME-AS CIEL:<ciel id>`, plus SNOMED, ICD-10, etc. |
 | New PIH-only concepts | ≥ 20000 | random UUID | `SAME-AS PIH:<id>` (self-reference) |
-| Cloned from CIEL via `$clone` | ≥ 20000 | new random UUID, not the CIEL UUID | `SAME-AS CIEL:<ciel id>` (equivalency), plus copies of CIEL's mappings |
+| Cloned from CIEL via `$clone` | ≥ 20000 | usually a new random UUID (some keep the CIEL UUID); names keep CIEL name UUIDs (`…BBBB`) | `SAME-AS CIEL:<ciel id>` (equivalency), copies of CIEL's mappings, and a broken "CIEL:<PIH id>" self-mapping (see the clone bug in workflow 1) |
 
 The `SAME-AS` mapping to `/orgs/PIH/sources/PIH/` with the concept's own id is a PIH convention, carried over from OpenMRS reference terms.
 
 **Is a CIEL concept already in PIH?** Search PIH mappings for the CIEL code, not just names:
 ```bash
 curl -s -H "Authorization: Token $(cat ~/.config/ocl/token)" \
-  'https://api.openconceptlab.org/orgs/PIH/sources/PIH/mappings/?toConcept=<CIEL_ID>&toSource=CIEL'
+  'https://api.openconceptlab.org/orgs/PIH/sources/PIH/mappings/?toConcept=<CIEL_ID>&toConceptSource=CIEL'
 ```
 No hits means PIH doesn't have it yet, unless someone created it by hand without a CIEL mapping, so also do a quick name search.
+
+- **The source filter is `toConceptSource`** (it matches the mapping's `to_source_name`). `toSource` is silently ignored: it returns every mapping that matches the other filters, e.g. `toConcept=5089` alone also returns `PIH:5089` and set memberships.
+- **`toConcept` matches a code or a name.**
 
 ## Writing to PIH
 
@@ -108,10 +111,34 @@ The response is keyed by expression, each with a `status` and a `bundle` listing
 
 **Preview first:** `GET /orgs/CIEL/sources/CIEL/concepts/<ID>/$cascade/?mapTypes=Q-AND-A,CONCEPT-SET&cascadeLevels=1` returns a Bundle whose `entry` items are the concepts and mappings that would come along. Escape the `$` in a double-quoted shell string. Check each answer concept against PIH using the mapping search above, and show the user what would be created.
 
-**Possible clone quirks** (seen on existing clones; not confirmed, so check with the dictionary maintainers before acting on them):
-- No `SAME-AS PIH:<id>` self-mapping is created. Ask the user whether to add one, to match convention.
-- CIEL's own `SAME-AS CIEL:<id>` mapping may get copied with its code rewritten to the new PIH id, leaving a bogus "CIEL:<PIH id>" mapping. Check for this after a clone.
-- CIEL names keep their CIEL name UUIDs (`…BBBB`), and extra CIEL locales come along too.
+**Known `$clone` bug: mappings get rewritten to PIH concepts** (confirmed Nov 2026, Jira UHM-9636; the ticket tracks the report to OCL, so check it for a fix before assuming this still happens).
+
+When `$clone` copies a CIEL mapping, it checks whether PIH already has a `SAME-AS` to the mapping's target. If so, it points the copy at that PIH concept instead. It updates `to_concept_url`, `to_concept_code` and `to_source_name`, but leaves `to_source_url` (and `from_source_url`) on the original source. The code is in oclapi2 `core/sources/models.py`, `clone_resources` → `get_equivalent_concept`, then `clone_mappings`. What this does to each kind of mapping:
+
+| CIEL mapping | After the clone | Effect in OpenMRS |
+|---|---|---|
+| `SAME-AS CIEL:<ciel id>` (CIEL's self-mapping) | "CIEL:<PIH id>", pointing at the new concept itself | OpenMRS uses `to_source_name` + code, so it gets `SAME-AS PIH:<id>`, the normal self-mapping. Only OCL looks wrong. |
+| `Q-AND-A` / `CONCEPT-SET` / other concept-to-concept | points at the right PIH concept, but `to_source_url` still says CIEL | None. The importer follows `to_concept_url`. |
+| ICD-10, LOINC, or any external code that exists as a concept in OCL, *when some PIH concept is SAME-AS that code* | points at that PIH concept; **the external code is lost** | Wrong: e.g. `BROADER-THAN PIH:10034` instead of `BROADER-THAN ICD-10-WHO:L28.0`. |
+
+SNOMED, IMO and other codes that aren't concepts in OCL (`to_concept_url` is null) aren't affected. The clone also doesn't add a proper `SAME-AS PIH:<id>` self-mapping.
+
+**After every clone, check it:**
+```bash
+python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --concept <new PIH ids…>
+```
+The script is read-only and reads the token from the file.
+- **`EXTERNAL`:** must be fixed. The script shows the code CIEL has. Tell the user, and propose retiring the bad mapping and adding the correct one (workflow 4).
+- **`SELF` / `NO-SELF`:** ask the user whether to retire the bogus "CIEL:<PIH id>" mapping and add a proper `SAME-AS PIH:<id>` self-mapping (workflow 2). OpenMRS already sees it as the self-mapping, so this only tidies OCL.
+- **`INTERNAL`:** leave it alone.
+
+Don't try to fix a mapping in place with `PUT`. It hasn't been tested on these inconsistent records.
+
+To audit the whole source, download a released export (workflow 6, steps 1–2) and run the script with `--export export.json`. On 1.8.46 this found 29 external, 932 self and 282 internal problems.
+
+**Other clone behavior:**
+- Names keep their CIEL name UUIDs (`…BBBB`). PIH's auto-UUID for names isn't applied.
+- All CIEL locales come along (nl, vi, ru, pt_BR, …), not only en/es/fr/ht.
 
 ### 2. Create a new concept in PIH
 
