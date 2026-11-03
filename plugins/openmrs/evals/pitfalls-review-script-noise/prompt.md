@@ -3,7 +3,7 @@ max_turns: 10
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Review this diff. The pitfalls review script was already run on it; its raw output is below. Treat the script output as unverified hints: confirm each hit against the diff yourself.
+Review this diff. The pitfalls review script was already run on it; its raw output is below. The changeSet in the first file shipped in the 2.4.0 release. Treat the script output as unverified hints: confirm each hit against the diff yourself.
 
 ```diff
 --- a/api/src/main/resources/liquibase-update-to-latest-2.4.x.xml

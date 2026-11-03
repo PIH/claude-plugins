@@ -5,5 +5,6 @@ weight: 1
 
 The response passes only if all of the following hold:
 
-- The code strictly rejects invalid dates: it uses `java.time` with `ResolverStyle.STRICT` (for example `DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT)`) or `SimpleDateFormat` with `setLenient(false)`, and with the latter it also checks the whole input was consumed (for example via `ParsePosition`).
-- It uses a fixed, explicit format that does not depend on the default locale (any time zone used is explicit) (it does not use `DateFormat.getDateInstance()` or a default-locale formatter).
+- The code parses strictly using one of: `LocalDate.parse` with `DateTimeFormatter.BASIC_ISO_DATE`; or `DateTimeFormatter.ofPattern("uuuuMMdd")` with `ResolverStyle.STRICT` (a `yyyy` pattern with STRICT and no era is wrong); or `SimpleDateFormat` with `setLenient(false)`, an explicit `Locale.ROOT` or `Locale.ENGLISH`, and a `ParsePosition` check that the whole input was consumed.
+- The input `19800231` is rejected (an exception or null/error result), not rolled over to March.
+- The format is fixed in the code and no default locale is used.
