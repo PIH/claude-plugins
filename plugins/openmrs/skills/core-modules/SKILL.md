@@ -92,7 +92,7 @@ Read versions from those files every time; never from memory.
 
 ### 6. Releases
 
-Never cut a release on your own. You may say a release is needed and prepare it, but ask the user first, every time.
+Never cut a release, even after the user agrees one is needed. Say when a release is needed, prepare the steps, and hand them to the user (see Hand-off).
 
 ## Hand-off: Claude prepares, the user acts
 
@@ -107,4 +107,4 @@ Claude never carries out public steps, even after approval, and never offers to 
 5. A Rwanda backport might be needed.
 6. A release is needed.
 7. Anything is public or outward-facing.
-8. A PIH-distro module is in neither refapp and not on either list in the classification reference.
+8. A PIH-distro module is in neither refapp and not on either list above.

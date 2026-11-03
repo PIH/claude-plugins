@@ -13,7 +13,7 @@ Work this out live from the files below. Don't rely on memory or an old list: th
 | O3 refapp, frontend | `openmrs/openmrs-distro-referenceapplication` | `main` | `frontend/spa-assemble-config.json` | keys of `frontendModules` |
 | O2 refapp | `openmrs/openmrs-distro-referenceapplication` | `2.x` | `package/src/main/resources/openmrs-distro.properties` | `omod.<name>=` lines |
 
-Ignore property lines that carry extra suffixes, such as `omod.appointments.groupId=` or `omod.serialization.xstream.type=`. Only `omod.<name>=` names a module.
+Module names can contain dots (`omod.webservices.rest=`, `omod.serialization.xstream=`). Ignore only the attribute lines that end in a known suffix, such as `omod.appointments.groupId=` or `omod.serialization.xstream.type=`.
 
 Fetching a file:
 
@@ -24,8 +24,10 @@ gh api 'repos/openmrs/openmrs-distro-referenceapplication/contents/distro/distro
 Listing module names from a properties file:
 
 ```bash
-... | grep -E '^omod\.[^.=]+=' | sed -E 's/^omod\.([^=]+)=.*/\1/' | sort -u
+... | grep -E '^omod\.' | grep -vE '\.(groupId|type|artifactId|version)=' | sed -E 's/^omod\.([^=]+)=.*/\1/' | sort -u
 ```
+
+Sanity check: the result should include `webservices.rest`. If it doesn't, the filter is wrong.
 
 A local checkout works too, if it has been fetched recently. Read from `origin/<branch>`, not from whatever happens to be checked out.
 

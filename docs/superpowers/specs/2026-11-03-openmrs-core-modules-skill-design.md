@@ -27,7 +27,7 @@ A core module (the user's definition) is one that is **in the PIH distro *and* i
 
 The skill tells Claude to **work this out live from those files**. It does not keep a hardcoded list, because the lists change.
 
-For reference only (not to copy into the skill), on 2026-11-03 that rule gives these backend core modules: addresshierarchy, allergyui, appframework, appointments, appointmentscheduling, appointmentschedulingui, appui, attachments, authentication, bedmanagement, calculation, coreapps, emrapi, event, fhir2, htmlformentry, htmlformentryui, htmlwidgets, idgen, initializer, legacyui, metadatamapping, o3forms, openconceptlab, owa, queue, registrationapp, registrationcore, reporting, reportingrest, reportingui, spa, teleconsultation, uicommons, uiframework, uilibrary.
+For reference only (not to copy into the skill), on 2026-11-03 that rule gives these backend core modules: addresshierarchy, allergyui, appframework, appointments, appointmentscheduling, appointmentschedulingui, appui, attachments, authentication, bedmanagement, calculation, coreapps, emrapi, event, fhir2, htmlformentry, htmlformentryui, htmlwidgets, idgen, initializer, legacyui, metadatamapping, o3forms, openconceptlab, owa, queue, registrationapp, registrationcore, reporting, reportingrest, reportingui, serialization.xstream, spa, teleconsultation, uicommons, uiframework, uilibrary, webservices.rest.
 
 ### Modules in the PIH distro but in neither refapp
 
