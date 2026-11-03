@@ -163,6 +163,13 @@ class JavaTests(unittest.TestCase):
     def test_g1_javadoc_does_not_hide_previous_member(self):
         self.assertEqual(confs("g1_javadoc_after_previous_member", "G1"), ["high"])
 
+    def test_g1_annotation_outside_hunk_is_low_confidence(self):
+        for name in ("g1_authorized_outside_hunk_javadoc",
+                     "g1_authorized_outside_hunk_many_annotations"):
+            h = hits(name, "G1")
+            self.assertEqual([f.confidence for f in h], ["low"], name)
+            self.assertIn("can't see @Authorized", h[0].message)
+
     def test_g1_concrete_class_ignored(self):
         self.assertEqual(hits("g1_concrete_class_ok", "G1"), [])
         self.assertEqual(hits("g1_body_lines_no_class_ctx_ok", "G1"), [])
@@ -246,6 +253,17 @@ class CliTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(data["findings"][0]["cat"], "I1")
         self.assertEqual(data["summary"], {"I1": 1})
+
+    def test_non_utf8_stdin_does_not_crash(self):
+        import io
+        from unittest import mock
+        raw = load("i1_ignore_added").replace("@Ignore", "@Ignore // caf\xe9").encode("latin-1")
+        stdin = io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8")
+        with mock.patch.object(sys, "stdin", stdin):
+            rc, out, err = self.run_main([])
+        self.assertEqual(rc, 0)
+        self.assertIn("I1", out)
+        self.assertNotIn("codec", err)
 
     def test_missing_file_still_exits_zero(self):
         rc, out, err = self.run_main(["/nonexistent/x.diff"])

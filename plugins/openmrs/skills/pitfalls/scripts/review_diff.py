@@ -473,8 +473,12 @@ def _g1_ends_as_declaration(view: List[Line], i: int) -> bool:
     return False
 
 
-def _g1_authorized_above(view: List[Line], i: int) -> bool:
-    """Walk up over annotations and comments (any length) to the previous member."""
+def _g1_authorized_above(view: List[Line], i: int) -> Optional[bool]:
+    """Walk up over annotations and comments (any length) to the previous member.
+
+    Returns None when the walk runs off the top of a hunk that starts with a
+    context line: the annotation may sit above the hunk, so the answer is unknown.
+    """
     in_block = False
     for prev in reversed(view[:i]):
         pt = prev.text.strip()
@@ -493,7 +497,7 @@ def _g1_authorized_above(view: List[Line], i: int) -> bool:
             return True
         if pt.endswith((";", "{", "}")):
             return False
-    return False
+    return None if view and view[0].kind == " " else False
 
 
 def _g1(fd: FileDiff) -> List[Finding]:
@@ -513,7 +517,12 @@ def _g1(fd: FileDiff) -> List[Finding]:
             if (G1_NOT_SIGNATURE.match(t) or re.search(r"\b(?:interface)\b", t)
                     or not G1_SIGNATURE.match(t) or not _g1_ends_as_declaration(view, i)):
                 continue
-            if not _g1_authorized_above(view, i):
+            above = _g1_authorized_above(view, i)
+            if above is None:
+                out.append(_finding(
+                    fd, ln, "G1", "low",
+                    "can't see @Authorized in diff context; check the file"))
+            elif not above:
                 out.append(_finding(
                     fd, ln, "G1", "high",
                     "service method has no @Authorized; it fails open for any caller"))
@@ -685,7 +694,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Advisory OpenMRS pitfall review of a diff.")
     ap.add_argument("diff_file", nargs="?", help="diff file (default: stdin)")
     ap.add_argument("--repo", help="repository to diff")
-    ap.add_argument("--base", help="base ref for --repo (runs git diff BASE...HEAD)")
+    ap.add_argument("--base", help="base ref for --repo (runs git diff BASE...HEAD); "
+                    "--repo without --base defaults to HEAD~1...HEAD")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     try:
         args = ap.parse_args(argv)
@@ -701,6 +711,8 @@ def main(argv=None) -> int:
             with open(args.diff_file, encoding="utf-8", errors="replace") as fh:
                 text = fh.read()
         else:
+            if hasattr(sys.stdin, "reconfigure"):
+                sys.stdin.reconfigure(errors="replace")
             text = sys.stdin.read()
         found = run_checks(parse_diff(text))
     except Exception as exc:  # advisory tool: never fail the caller

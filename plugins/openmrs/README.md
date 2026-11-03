@@ -52,12 +52,12 @@ For example:
 
 - **The skill didn't load:** name the module or repo in your request (for example "in emrapi" or "upstream in fhir2"), or ask Claude to use the `openmrs:contributing` skill.
 - **Claude can't read the distro files:** check that `gh` is installed and signed in (`gh auth status`).
-- **Claude can't find the review script:** run it with `python3` from the skill directory: `git diff <base>...HEAD | python3 plugins/openmrs/skills/pitfalls/scripts/review_diff.py`.
+- **Claude can't find the review script:** run it with `python3` from the pitfalls skill's own directory (the "base directory" Claude reports when the skill loads): `git diff <base>...HEAD | python3 <pitfalls skill dir>/scripts/review_diff.py`. In a checkout of this repo that is `plugins/openmrs/skills/pitfalls/scripts/review_diff.py`.
 - **Claude wants to edit the skill but auto mode blocks it:** switch out of auto mode for that edit.
 
 ## Developing this plugin
 
-To revise it, follow the [development workflow](../../README.md#workflow-for-revising-a-plugin) in the main README, with `<name>` = `openmrs` and `<skill>` = `contributing`.
+To revise it, follow the [development workflow](../../README.md#workflow-for-revising-a-plugin) in the main README, with `<name>` = `openmrs` and `<skill>` = `contributing` or `pitfalls`.
 
 **For review:** the lists of PIH-distro modules that are in neither refapp (`authenticationui` treated as core; `dispensing`, `edtriageapp`, `emr`, `growthchart`, `labtrackingapp`, `namephonetics`, `paperrecord`, `pihapps`, `pihcore`, `printer`, `radiologyapp` free to change) are an initial call. They're near the top of `skills/contributing/SKILL.md`. If you disagree, say so or open a PR.
 
