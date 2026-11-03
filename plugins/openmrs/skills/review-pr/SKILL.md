@@ -94,6 +94,6 @@ Use this when asked to re-review, or when the PR already has a review by the use
    2. Comment on UHM-456: requirements table, 1 follow-up.
    3. Hand over the comment for TRUNK-8888 (text above): you post it at https://issues.openmrs.org/browse/TRUNK-8888.
 
-   Then ask: "For each action, tell me approve, edit or skip." Nothing has been posted.
+   Then ask: "For each action, tell me approve, edit or skip." Nothing has been posted. Nothing else goes after the list: put other questions and caveats (an unclassified repo, no `gh` in this session) in Notices or in the action's own line.
 
 Skip only the sections that can't apply. When you stop for an ambiguous PR or for patient or employee details (rule 3), give the notice and the question and nothing else.
