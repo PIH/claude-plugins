@@ -11,6 +11,11 @@
       "name": "ocl",
       "source": "./plugins/ocl",
       "description": "Search and maintain the PIH concept dictionary in Open Concept Lab (OCL): look up concepts, check set membership, clone from CIEL, and create or edit PIH concepts and mappings."
+    },
+    {
+      "name": "openmrs",
+      "source": "./plugins/openmrs",
+      "description": "Rules for working in OpenMRS core and the shared core modules: keep shared code generic and FHIR-based, avoid breaking changes, follow the OpenMRS and Bahmni contribution process, and backport and release the way PIH needs."
     }
   ]
 }

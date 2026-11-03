@@ -1,0 +1,18 @@
+{
+  "name": "openmrs",
+  "version": "0.1.1",
+  "description": "Rules for working in OpenMRS core and the shared core modules: keep shared code generic and FHIR-based, avoid breaking changes, follow the OpenMRS and Bahmni contribution process, and backport and release the way PIH needs.",
+  "author": {
+    "name": "Partners In Health"
+  },
+  "license": "MPL-2.0",
+  "repository": "https://github.com/PIH/claude-plugins",
+  "keywords": [
+    "openmrs",
+    "o3",
+    "fhir",
+    "bahmni",
+    "pih",
+    "upstream"
+  ]
+}
