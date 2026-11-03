@@ -16,7 +16,7 @@ Type this in Claude Code, then start a new session:
 
 | | |
 |---|---|
-| **Skill: `core-modules`** | Loads automatically when you design, change, review, backport or release code in openmrs-core, a core module (for example emrapi, fhir2, coreapps, htmlformentry, appointments) or an `@openmrs/esm-*` app. It also loads when PIH work is about to add logic generic enough to belong upstream. |
+| **Skill: `contributing`** | Loads automatically when you design, change, review, backport or release code in openmrs-core, a core module (for example emrapi, fhir2, coreapps, htmlformentry, appointments) or an `@openmrs/esm-*` app. It also loads when PIH work is about to add logic generic enough to belong upstream. |
 
 ## What it does
 
@@ -45,15 +45,15 @@ For example:
 
 ## Troubleshooting
 
-- **The skill didn't load:** name the module or repo in your request (for example "in emrapi" or "upstream in fhir2"), or ask Claude to use the `openmrs:core-modules` skill.
+- **The skill didn't load:** name the module or repo in your request (for example "in emrapi" or "upstream in fhir2"), or ask Claude to use the `openmrs:contributing` skill.
 - **Claude can't read the distro files:** check that `gh` is installed and signed in (`gh auth status`).
 - **Claude wants to edit the skill but auto mode blocks it:** switch out of auto mode for that edit.
 
 ## Developing this plugin
 
-To revise it, follow the [development workflow](../../README.md#workflow-for-revising-a-plugin) in the main README, with `<name>` = `openmrs` and `<skill>` = `core-modules`.
+To revise it, follow the [development workflow](../../README.md#workflow-for-revising-a-plugin) in the main README, with `<name>` = `openmrs` and `<skill>` = `contributing`.
 
-**For review:** the lists of PIH-distro modules that are in neither refapp (`authenticationui` treated as core; `dispensing`, `edtriageapp`, `emr`, `growthchart`, `labtrackingapp`, `namephonetics`, `paperrecord`, `pihapps`, `pihcore`, `printer`, `radiologyapp` free to change) are an initial call. They're near the top of `skills/core-modules/SKILL.md`. If you disagree, say so or open a PR.
+**For review:** the lists of PIH-distro modules that are in neither refapp (`authenticationui` treated as core; `dispensing`, `edtriageapp`, `emr`, `growthchart`, `labtrackingapp`, `namephonetics`, `paperrecord`, `pihapps`, `pihcore`, `printer`, `radiologyapp` free to change) are an initial call. They're near the top of `skills/contributing/SKILL.md`. If you disagree, say so or open a PR.
 
 Good additions to the skill:
 - **Process details that worked or changed:** a repo's PR conventions, where a ticket really goes.

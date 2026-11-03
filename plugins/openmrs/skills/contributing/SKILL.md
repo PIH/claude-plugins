@@ -1,5 +1,5 @@
 ---
-name: core-modules
+name: contributing
 description: How PIH works in OpenMRS code it doesn't solely own, meaning openmrs-core and the shared "core" modules (backend omods like emrapi, fhir2, webservices.rest, coreapps, htmlformentry, reporting, idgen, registrationcore, appointments, queue, and O3 frontend apps like esm-patient-chart). Use it whenever designing, changing, reviewing, backporting or releasing code in openmrs-core, an OpenMRS or Bahmni module, or an @openmrs/esm-* app; when a PIH ticket's requirements lead to an upstream change; when the talk is of "upstream", OpenMRS Talk, OpenMRS or BAH Jira tickets, backports or module releases; and when work in a PIH-owned repo (pihcore, pihemr, PIH config, @pih/esm-* apps) is about to add logic generic enough to belong upstream.
 ---
 
