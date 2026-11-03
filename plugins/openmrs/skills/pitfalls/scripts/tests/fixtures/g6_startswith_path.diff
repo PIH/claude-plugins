@@ -1,0 +1,9 @@
+diff --git a/api/src/main/java/org/openmrs/util/ZipUtil.java b/api/src/main/java/org/openmrs/util/ZipUtil.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/util/ZipUtil.java
++++ b/api/src/main/java/org/openmrs/util/ZipUtil.java
+@@ -20,3 +20,4 @@
+ 	File dest = new File(targetDir, entry.getName());
++	if (!dest.getCanonicalPath().startsWith(targetDir.getCanonicalPath())) {
+ 		throw new IOException("bad entry");
+ 	}
