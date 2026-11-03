@@ -1,13 +1,13 @@
 # API compatibility, upgrades and process (F1-F6, I1, I2)
 
-Starred categories (★) recur across many years or many reviews. Read them first. Process questions (tickets, Talk, backports, releases) are covered by the `core-modules` skill.
+Starred categories (★) recur across many years or many reviews. Read them first. Process questions (tickets, Talk, backports, releases) are covered by the `contributing` skill.
 
 ## F1 ★ Breaking public signatures or removing members
 A public method is changed, removed or retyped, so compiled modules fail with `NoSuchMethodError` or stop compiling.
 - **While writing:** Overload and deprecate (`@since`, `@deprecated`); do not change signatures outside a major release. Search the openmrs GitHub org for callers first.
 - **When reviewing:** Changed parameter or return types on a public API; removed methods; refactors of services modules extend (the scheduler, `Context`).
 - **Seen in:** TRUNK-5386, TRUNK-2733, TRUNK-3496, TRUNK-5200
-- **Module twist:** A module's "API" includes classes others extend, such as htmlformentry's `FormEntryContext`, `FormEntrySession`, widgets and the test-helper jar (HTML-736). Process (tickets, Talk, backports, releases): see the `core-modules` skill.
+- **Module twist:** A module's "API" includes classes others extend, such as htmlformentry's `FormEntryContext`, `FormEntrySession`, widgets and the test-helper jar (HTML-736). Process (tickets, Talk, backports, releases): see the `contributing` skill.
 
 ## F4 ★ New or stricter validation that rejects existing data or defaults
 A new validation rule rejects values that existing rows, shipped defaults or old clients legitimately contain.
@@ -42,7 +42,7 @@ A change is cherry-picked to a maintenance branch although it is a feature, or w
 - **While writing:** Backport only targeted bug fixes. Diff the surrounding infrastructure (config, schema, callers) between branches first.
 - **When reviewing:** Backports that add options or change defaults; a cherry-pick that applies cleanly but references code absent on the branch.
 - **Seen in:** TRUNK-4761, TRUNK-3069, TRUNK-6331
-- **Module twist:** Process (tickets, Talk, backports, releases): see the `core-modules` skill.
+- **Module twist:** Process (tickets, Talk, backports, releases): see the `contributing` skill.
 
 ## F2 Changing exception types or failure modes; swallowing errors; ignored parameters
 A fix changes which exception is thrown or silently falls back to a default, so callers' handlers stop working or errors vanish.
@@ -56,4 +56,4 @@ A new option or behavior is on by default, or core takes over a module's table, 
 - **While writing:** New options default to the old behavior. Test both an upgrade from the previous release and a fresh install.
 - **When reviewing:** New global properties defaulting to "on"; moved tables or Liquibase between core and a module.
 - **Seen in:** TRUNK-4513, TRUNK-4429 then TRUNK-4630, TRUNK-6449, TRUNK-5338
-- **Module twist:** Retrofitting authorization into a module that shipped open needs a role-grant migration in the same release (RESTWS-989 after TRUNK-6203). Process (tickets, Talk, backports, releases): see the `core-modules` skill.
+- **Module twist:** Retrofitting authorization into a module that shipped open needs a role-grant migration in the same release (RESTWS-989 after TRUNK-6203). Process (tickets, Talk, backports, releases): see the `contributing` skill.
