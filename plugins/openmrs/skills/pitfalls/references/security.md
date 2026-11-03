@@ -25,7 +25,7 @@ Output is encoded for the wrong context (HTML encoder inside a JS string or JSON
 
 ## G2 Sibling methods disagree on the privilege
 Two methods on the same entity require different privileges, or one checks a privilege that no longer exists, so the weaker one becomes the real policy.
-- **While writing:** Same entity, same privilege across get, save, void and purge, plus per-object checks. Look up names in the target core's `PrivilegeConstants`.
+- **While writing:** Methods returning or changing the same data must use the same privilege as their siblings of the same kind (getters share the get privilege; save, void and purge use their own), plus any per-object check. Look up names in the target core's `PrivilegeConstants`.
 - **When reviewing:** A new method whose `@Authorized` differs from its siblings; string privilege literals; privilege names deprecated in core.
 - **Seen in:** TRUNK-4938, ef6bc1225, TRUNK-5444
 - **Module twist:** A session endpoint checked VIEW_PROVIDERS, removed in core 2.0 (RESTWS-946); the reset-password endpoint required privileges the anonymous flow cannot have (RESTWS-885).

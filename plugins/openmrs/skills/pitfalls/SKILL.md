@@ -11,14 +11,14 @@ OpenMRS has made the same code mistakes for years: released changesets edited, v
 
 Before writing, find the change type in the area table below and read that area file in `references/`. Follow its "While writing" rules. The always rules and the area table's one-line summary apply even if you can't open the file.
 
-When asked for code, write the code, with its tests, applying these rules. Put process questions (an existing method, a Talk post, a ticket) in a short note after the code, not in place of it.
+When asked for code, write the code, with its tests, applying these rules. Put process questions (an existing method, a Talk post, a ticket) in a short note after the code, not in place of it. If `contributing` classes the change as big, say so up front and offer the Talk draft; any code you write is a local draft pending that discussion.
 
 ## Review mode
 
 1. Run the review script on the diff: `git diff <base>...HEAD | python3 <skill dir>/scripts/review_diff.py` (or `--repo PATH --base REF`; `--json` for machine output). Each line is `path:line  <ID>  <confidence>  <message>`. It's advisory and never blocks.
 2. Read every area file the diff touches.
 3. Check each changed hunk against that area's "When reviewing" rules and the always rules below.
-4. Report each finding with its category id, why it matters, and the fix. Cite a public ticket where it helps. Mark each finding blocking or non-blocking. A missing test for a small defensive change (a null guard, a trim) is non-blocking.
+4. Report each finding with its category id, why it matters, and the fix. Cite a public ticket where it helps. Mark each finding blocking or non-blocking. A missing test for a small defensive guard that isn't the fix for a reported bug is non-blocking; a guard that fixes a reported failure still needs its I1 test.
 5. Script hits are hints, not findings. Confirm each one against the diff. Low-confidence hits are prompts to look, not findings. For each hit you dismiss, say so in one line with the reason (for example "D1 at Foo.java:21: false positive, the hunk never touches compareTo"). Code that only a dismissed hit pointed at gets at most a non-blocking remark, never a required change.
 
 Never post review comments on your own: draft them, list the planned actions, and post only what the user approves (see `contributing`, 'Public steps').
@@ -34,7 +34,7 @@ Never post review comments on your own: draft them, list the planned actions, an
 7. **C2** Filter, count and page in the database query, not with Java streams over `getAll...()`.
 8. **F1** Don't break public API: Java signatures, REST/FHIR shapes, schema, GP defaults, extension points and config schemas. Deprecate and add instead (process is in `contributing`).
 9. **F5** A dependency or framework upgrade (including hbm-to-JPA, Spring, Hibernate) must preserve implicit behavior: defaults, cascade, fetch, ordering, null handling.
-10. **G1** Every public service interface method gets `@Authorized`. Copy the privilege list of its sibling methods on that entity unchanged (a new getter uses what the other getters use) (G2). Without it the method fails open.
+10. **G1** Every public service interface method gets `@Authorized`. Copy the privilege list of its siblings of the same kind on that entity unchanged (a new getter uses exactly what the other getters use; save, void and purge have their own) (G2). If you think that privilege is too weak, say so in a note; the annotation still matches the siblings. Without it the method fails open.
 11. **G10** Escape at output for the context it lands in (HTML, attribute, JS, URL), not on input or storage.
 12. **I1** Every fix or feature has a test at the layer where the bug appears that fails before and passes after. Persistence and mapping tests save, `flush()`, `clear()` and reload (B7). Service methods get a test that authenticates as a user who lacks the required privilege (logging out is not enough) and expects `APIAuthenticationException`. Never `@Ignore` or skip tests to get green.
 
