@@ -37,8 +37,8 @@ Type this in Claude Code, then start a new session:
 Ask Claude to review a PR, or use `/openmrs:review-pr <PR link> [ticket]`. Claude reads the PR and drafts a review. It posts nothing on its own.
 
 - **Which ticket it uses:** the PIH ticket if there is one, otherwise the PR's upstream ticket (TRUNK, O3, BAH and so on), otherwise the PR description. Claude says which one it used.
-- **Patient data check:** before Claude reads any ticket, it asks you to confirm the ticket has no patient data or PHI. Processing patient or employee data in cloud-based AI is against company policy. Claude reads the PR text, comments and CI logs without asking. If they contain patient details, Claude stops, tells you, and asks whether to go on. It keeps those details out of anything it drafts.
-- **What you get:** the requirements check (met, partly met or missing, with file and line), CI status and probable cause of any failure, a draft PR review with a proposed verdict and at most about 10 inline comments, a draft ticket comment, and a private note for you only (things to raise in person, security concerns).
+- **Patient and employee data check:** before Claude reads any ticket, it asks you to confirm the ticket has no patient or employee personal data (PHI or staff personal details). It asks again before re-reading a ticket that may have changed, for example on a re-review. Processing patient or employee data in cloud-based AI is against company policy. Claude reads the PR text, comments, CI logs and diff without asking. If they contain patient or employee personal details (including data files or fixtures that look like real records), Claude stops, tells you, and asks whether to go on. It keeps those details out of anything it drafts.
+- **What you get:** the requirements check (met, partly met or missing, with file and line), CI status and probable cause of any failure, a draft PR review with a proposed verdict and at most about 10 inline comments, a draft ticket comment, and a private note for you only (things to raise in person, security issues in already-released code, script hits it dismissed).
 - **Planned actions:** at the end Claude lists each action it proposes, such as posting the PR review or commenting on the PIH ticket. You approve, edit or skip each one. Approving one never covers another. Claude never proposes approving the PR while it has a blocking finding.
 - **OpenMRS and Bahmni Jira:** Claude hands you the comment text and the ticket link. You post it yourself.
 - **Re-reviews:** after the author pushes changes, ask for a re-review. Claude looks only at what changed since your last review, says whether each earlier comment was addressed, and drafts a short follow-up.
@@ -58,7 +58,7 @@ For example:
 - *My coreapps fix is merged. What needs backporting and releasing?*
 - *Is examplewidget a core module?*
 - Write mode: *Add a Liquibase changeset that adds a NOT NULL `status` column to a core module table.*
-- *A colleague opened PR https://github.com/openmrs/openmrs-module-emrapi/pull/123 for UHM-456. Review it.* (Claude confirms the ticket has no patient data, then drafts the review. You approve each action before anything is posted.)
+- *A colleague opened PR https://github.com/openmrs/openmrs-module-emrapi/pull/123 for UHM-456. Review it.* (Claude confirms the ticket has no patient or employee data, then drafts the review. You approve each action before anything is posted.)
 - Review mode: *Review my branch against main for OpenMRS pitfalls.* (Claude runs the script on the diff and drafts the review. You approve before anything is posted.)
 
 ## Troubleshooting
@@ -66,7 +66,7 @@ For example:
 - **The skill didn't load:** name the module or repo in your request (for example "in emrapi" or "upstream in fhir2"), or ask Claude to use the `openmrs:contributing` skill.
 - **Claude can't read the distro files:** check that `gh` is installed and signed in (`gh auth status`).
 - **Claude can't find the review script:** run it with `python3` from the pitfalls skill's own directory (the "base directory" Claude reports when the skill loads): `git diff <base>...HEAD | python3 <pitfalls skill dir>/scripts/review_diff.py`. In a checkout of this repo that is `plugins/openmrs/skills/pitfalls/scripts/review_diff.py`.
-- **Claude can't read a PR, CI results or a Jira ticket:** check that `gh` is signed in (`gh auth status`) and, for PIH Jira, that the Atlassian connector is connected. Without them Claude says what it couldn't check and reviews from what it has. For OpenMRS or Bahmni Jira it can read public tickets, but you always post the comment.
+- **Claude can't read a PR, CI results or a Jira ticket:** check that `gh` is signed in (`gh auth status`) and, for PIH Jira, that the Atlassian connector is connected. If CI isn't GitHub Actions or its logs can't be fetched, or Jira isn't reachable, Claude says what couldn't be checked and continues with what's available. For OpenMRS or Bahmni Jira it can read public tickets, but you always post the comment.
 - **Claude wants to edit the skill but auto mode blocks it:** switch out of auto mode for that edit.
 
 ## Developing this plugin

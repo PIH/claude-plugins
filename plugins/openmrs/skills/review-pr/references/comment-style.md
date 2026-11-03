@@ -41,13 +41,14 @@ Follow-ups: things to do outside this PR (an upstream ticket needed, a backport 
 Short, for the user only:
 - Things worth raising in person.
 - Confidence per finding (high, medium, low) and what would settle the doubtful ones.
-- Any likely security vulnerability, with a suggestion to report it privately. This is the only place it appears.
+- Any exploitable issue in already-released code, or one the PR appears to quietly fix, with a suggestion to report it privately. This is the only place it appears. (Problems in the PR's own new code are normal findings.)
+- Dismissed pitfalls script hits, each with a one-line reason.
 - Anything skipped or unavailable (a sibling skill, CI logs, a ticket).
 
 ## Redaction rules
-- No patient data or PHI, even as an example, in any draft. Use made-up values.
-- No private or unpublished security details in a PR comment, public or private repo.
-- In public repos, paraphrase internal ticket content; do not quote it. No site names or internal discussion.
+- No patient data, PHI or employee personal data, even as an example, in any draft. Use made-up values.
+- Problems in the PR's own new code (for example a missing `@Authorized` the PR adds) are normal findings. An exploitable issue in already-released code, or a PR that appears to quietly fix one, is never described in any public draft (inline comments, summary, "what's good" praise, ticket comment), public or private repo.
+- Check `gh repo view <o>/<r> --json visibility` first; if unknown, treat the repo as public. In public repos, paraphrase internal ticket content; do not quote it. No site names or internal discussion.
 - Never mention the user's private notes or unverified issues.
 - No personal criticism, and no names beyond the PR's own authors and handles already visible on the PR.
 
@@ -67,7 +68,7 @@ Short, for the user only:
 
 | Requirement | Status | Where |
 |---|---|---|
-| Show the last visit date on the Site Alpha dashboard | partly met | `dashboard.tsx:30` shows it, but retired visits are included (C1) |
+| Show the last visit date on the Site Alpha dashboard | partly met | `dashboard.tsx:30` shows it, but voided visits are included (C1) |
 | Hide the column for users without the view privilege | missing | no privilege check found |
 
-Follow-up: add a test for the retired-visit case.
+Follow-up: add a test for the voided-visit case.
