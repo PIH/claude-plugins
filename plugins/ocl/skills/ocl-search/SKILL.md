@@ -111,9 +111,10 @@ The response is keyed by expression, each with a `status` and a `bundle` listing
 
 **Preview first:** `GET /orgs/CIEL/sources/CIEL/concepts/<ID>/$cascade/?mapTypes=Q-AND-A,CONCEPT-SET&cascadeLevels=1` returns a Bundle whose `entry` items are the concepts and mappings that would come along. Escape the `$` in a double-quoted shell string. Check each answer concept against PIH using the mapping search above, and show the user what would be created.
 
-**Known `$clone` bug: mappings get rewritten to PIH concepts** (confirmed Nov 2026, Jira UHM-9636; the ticket tracks the report to OCL, so check it for a fix before assuming this still happens).
+**Known `$clone` bugs** (confirmed Nov 2026, Jira UHM-9636). They're reported to OCL as [ocl_issues#3012](https://github.com/OpenConceptLab/ocl_issues/issues/3012) and [ocl_issues#3013](https://github.com/OpenConceptLab/ocl_issues/issues/3013); check both for a fix before assuming they still happen (`gh issue view <n> -R OpenConceptLab/ocl_issues`). Both are in oclapi2 `core/sources/models.py` (`clone_resources`, `clone_mappings`) and `Mapping.clone()`.
 
-When `$clone` copies a CIEL mapping, it checks whether PIH already has a `SAME-AS` to the mapping's target. If so, it points the copy at that PIH concept instead. It updates `to_concept_url`, `to_concept_code` and `to_source_name`, but leaves `to_source_url` (and `from_source_url`) on the original source. The code is in oclapi2 `core/sources/models.py`, `clone_resources` → `get_equivalent_concept`, then `clone_mappings`. What this does to each kind of mapping:
+1. **The source URLs are never updated (#3012).** Every copied mapping keeps the original mapping's `from_source_url`, which is CIEL, even though it now starts from a PIH concept. This is cosmetic: the OpenMRS importer never reads `from_source_url`.
+2. **The target is swapped (#3013).** For each copied mapping, `$clone` checks whether PIH already has a `SAME-AS` to the mapping's target. If so, it points the copy at that PIH concept instead. It updates `to_concept_url`, `to_concept_code` and `to_source_name`, but leaves `to_source_url` on the original source. What this does to each kind of mapping:
 
 | CIEL mapping | After the clone | Effect in OpenMRS |
 |---|---|---|
@@ -121,22 +122,25 @@ When `$clone` copies a CIEL mapping, it checks whether PIH already has a `SAME-A
 | `Q-AND-A` / `CONCEPT-SET` / other concept-to-concept | points at the right PIH concept, but `to_source_url` still says CIEL | None. The importer follows `to_concept_url`. |
 | ICD-10, LOINC, or any external code that exists as a concept in OCL, *when some PIH concept is SAME-AS that code* | points at that PIH concept; **the external code is lost** | Wrong: e.g. `BROADER-THAN PIH:10034` instead of `BROADER-THAN ICD-10-WHO:L28.0`. |
 
-SNOMED, IMO and other codes that aren't concepts in OCL (`to_concept_url` is null) aren't affected. The clone also doesn't add a proper `SAME-AS PIH:<id>` self-mapping.
+SNOMED, IMO and other codes that aren't concepts in OCL (`to_concept_url` is null) aren't affected. The clone doesn't add a separate, proper `SAME-AS PIH:<id>` self-mapping. The `SELF` mapping in the first row stands in for it.
 
 **After every clone, check it:**
 ```bash
 python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --concept <new PIH ids…>
 ```
 The script is read-only and reads the token from the file.
-- **`EXTERNAL`:** must be fixed. The script shows the code CIEL has. Tell the user, and propose retiring the bad mapping and adding the correct one (workflow 4).
-- **`SELF` / `NO-SELF`:** ask the user whether to retire the bogus "CIEL:<PIH id>" mapping and add a proper `SAME-AS PIH:<id>` self-mapping (workflow 2). OpenMRS already sees it as the self-mapping, so this only tidies OCL.
-- **`INTERNAL`:** leave it alone.
+- **`EXTERNAL`:** must be fixed. Tell the user, and propose retiring the bad mapping and adding the correct one with the same map type (workflow 4). The script shows two codes:
+  - **"CIEL … has":** CIEL's mapping *today*.
+  - **"PIH … is SAME-AS":** the code that was lost in the clone.
+
+  Right after a clone these match. For older clones, CIEL may have changed its mapping since, so if they differ, show the user both and let them choose. Also check whether someone already re-added the correct mapping by hand; if so, only retire the bad one.
+- **`SELF` / `NO-SELF` / `INTERNAL`:** leave them alone, and just mention them. OpenMRS already reads a `SELF` mapping as the usual `SAME-AS PIH:<id>`, and `INTERNAL` mappings point at the right concept. Cleaning these up is on hold until OCL fixes #3012/#3013. Retiring and re-adding them gives each mapping a new ID, which makes every server delete and recreate it on the next import, only to fix fields OpenMRS doesn't use.
 
 Don't try to fix a mapping in place with `PUT`. It hasn't been tested on these inconsistent records.
 
-To audit the whole source, download a released export (workflow 6, steps 1–2) and run the script with `--export export.json`. On 1.8.46 this found 29 external, 932 self and 282 internal problems.
+To audit the whole source, download a released export (workflow 6, steps 1–2) and run the script with `--export export.json`. On 1.8.46 it found 29 external, 932 self and 282 internal problems. The script doesn't report the wrong `from_source_url` (#3012), which affects about 3,850 mappings, nearly every mapping a clone has copied.
 
-**Other clone behavior:**
+**Other clone behavior (expected; not a bug, confirmed with the dictionary maintainers):**
 - Names keep their CIEL name UUIDs (`…BBBB`). PIH's auto-UUID for names isn't applied.
 - All CIEL locales come along (nl, vi, ru, pt_BR, …), not only en/es/fr/ht.
 
