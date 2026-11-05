@@ -166,6 +166,90 @@ def check_name_uuids(concepts, db_names):
     return findings
 
 
+# OCL bugs these checks work around. Once OCL fixes them, the matching checks (and the skill's
+# guidance about them) can probably go. The fix watch below spots signs of that.
+OCL_ISSUES = {
+    3012: 'copied mappings keep the original from_source_url',
+    3013: 'mappings retargeted to an equivalent PIH concept (incl. CIEL self-mapping, external codes)',
+}
+FIX_WATCH_SINCE = '2026-11-05'   # only clones made after the issues were filed tell us about a fix
+CLONE_WINDOW_SECONDS = 300       # a clone creates its concept and mappings within moments of each other
+
+
+def _ts(s):
+    from datetime import datetime
+    return datetime.fromisoformat((s or '').replace('Z', '+00:00')) if s else None
+
+
+def ocl_issue_states():
+    """{issue number: (state, closed_at)} from GitHub's public API; {} if it can't be reached."""
+    states = {}
+    for n in OCL_ISSUES:
+        try:
+            req = urllib.request.Request(f'https://api.github.com/repos/OpenConceptLab/ocl_issues/issues/{n}',
+                                         headers={'Accept': 'application/vnd.github+json'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                d = json.load(r)
+            states[n] = (d.get('state'), (d.get('closed_at') or '')[:10])
+        except Exception:  # offline, rate-limited… the watch is best-effort
+            pass
+    return states
+
+
+def fix_watch(concepts, by_from, findings, since=FIX_WATCH_SINCE):
+    """Look at clones made since `since` for signs that OCL has fixed the clone bugs."""
+    self_bug = {f['concept'] for f in findings if f['kind'] == 'self'}
+    ext_bug = {f['concept'] for f in findings if f['kind'] == 'external'}
+    clones, ev = [], {'3012': set(), '3013': set(), 'name_uuids': set()}
+    for cid, c in concepts.items():
+        created = _ts(c.get('created_on'))
+        if not created or c['created_on'][:10] < since:
+            continue
+        near = [m for m in by_from.get(cid, [])
+                if m.get('created_on') and abs((_ts(m['created_on']) - created).total_seconds()) < CLONE_WINDOW_SECONDS]
+        equiv = [m for m in near if m['map_type'] == 'SAME-AS' and source_of(m.get('to_concept_url')) == CIEL
+                 and not m.get('to_source_url')]
+        if not equiv:
+            continue  # not a $clone
+        clones.append(cid)
+        copied = [m for m in near if m not in equiv]
+        if copied:
+            stale = any(m.get('from_source_url') not in (None, PIH) for m in copied)
+            ev['3012'].add('still happening' if stale else 'looks fixed')
+            ev['3013'].add('still happening' if (cid in self_bug or cid in ext_bug) else 'looks fixed')
+        ciel_style = any((n.get('external_id') or '').endswith('BBBBBBBB') for n in c.get('names') or [])
+        ev['name_uuids'].add('still CIEL name uuids' if ciel_style else 'fresh name uuids')
+    return {'kind': 'ocl-fix-watch', 'clones_checked': clones, 'since': since,
+            'evidence': {k: sorted(v) for k, v in ev.items()}, 'issues': ocl_issue_states()}
+
+
+def print_fix_watch(w):
+    issues = w['issues']
+    closed = [n for n, (state, _) in issues.items() if state == 'closed']
+    signs = [k for k, v in w['evidence'].items() if v == ['looks fixed'] or v == ['fresh name uuids']]
+    if not (w['clones_checked'] or closed):
+        return
+    print()
+    print('OCL fix watch:')
+    for n, why in OCL_ISSUES.items():
+        state = issues.get(n)
+        print(f"  ocl_issues#{n} ({why}): " + (f"{state[0]}" + (f" on {state[1]}" if state[1] else '') if state
+                                                else 'state unknown (GitHub not reachable)'))
+    if w['clones_checked']:
+        print(f"  Clones made since {w['since']} that were checked: {' '.join(w['clones_checked'])}")
+        for k, v in w['evidence'].items():
+            if v:
+                print(f"    {k}: {', '.join(v)}")
+    if closed or signs:
+        said = {'3012': 'new clones suggest ocl_issues#3012 is fixed',
+                '3013': 'new clones suggest ocl_issues#3013 is fixed',
+                'name_uuids': 'new clones get fresh name uuids instead of keeping CIEL\'s'}
+        print('  POSSIBLE OCL FIX: ' + '; '.join(
+            [f'ocl_issues#{n} is closed' for n in closed] + [said[k] for k in signs]) + '.')
+        print('  Suggest to the user (do not do it unprompted) reviewing whether the skill\'s clone-bug guidance '
+              'and the matching checks are still needed.')
+
+
 def load_export(path):
     with open(path) as f:
         d = json.load(f)
@@ -212,6 +296,8 @@ def main():
     p.add_argument('--name-uuids', action='store_true',
                    help='also check name uuids against a PIH DB snapshot (implied by --unreleased)')
     p.add_argument('--refresh-snapshot', action='store_true', help='re-download the PIH DB snapshot')
+    p.add_argument('--fix-watch-since', default=FIX_WATCH_SINCE, metavar='YYYY-MM-DD',
+                   help=argparse.SUPPRESS)  # for testing the fix watch on older clones
     p.add_argument('--json', action='store_true')
     a = p.parse_args()
 
@@ -259,8 +345,10 @@ def main():
     if a.name_uuids:
         findings.extend(check_name_uuids(concepts, load_db_snapshot(a.refresh_snapshot)))
 
+    watch = fix_watch(concepts, by_from, findings, a.fix_watch_since) if live else None
+
     if a.json:
-        json.dump(findings, sys.stdout, indent=1)
+        json.dump(findings + ([watch] if watch else []), sys.stdout, indent=1)
         print()
         return
 
@@ -291,6 +379,9 @@ def main():
         else:
             print(f"NO-SELF   PIH {f['concept']} {f['name']}"
                   + (' (has the bogus CIEL self-mapping instead)' if f['has_bogus_self'] else ''))
+
+    if watch:
+        print_fix_watch(watch)
 
 
 if __name__ == '__main__':

@@ -139,6 +139,17 @@ The script is read-only and reads the token from the file. `--name-uuids` also c
 
 Don't try to fix a mapping in place with `PUT`. It hasn't been tested on these inconsistent records.
 
+**Watch for OCL fixing these bugs.** When run on live concepts (`--concept`, `--unreleased`), the script ends with an **"OCL fix watch"** section, but only if there's something to report. It shows:
+- **Issue state:** whether ocl_issues#3012 and #3013 are open or closed, from GitHub.
+- **Fresh clones:** for clones made after the issues were filed, whether the bugs still show up. If not, the copied mappings have a PIH `from_source_url`, there are no `SELF` or `EXTERNAL` findings, and the clones get fresh name UUIDs.
+
+If it prints **"POSSIBLE OCL FIX"**, tell the user. Then *suggest*, without doing it unprompted, reviewing whether the skill still needs the related guidance and checks:
+- **#3012:** the from-source note.
+- **#3013:** the `SELF`/`INTERNAL`/`EXTERNAL` handling, and the on-hold cleanup (UHM-9636 step 3), which OCL's fix might also cover.
+- **Name UUIDs:** the name-UUID caveat. Keep `--name-uuids` anyway, as any manual name edit can still clash.
+
+One clean clone is weak evidence, since that concept may simply not have triggered the bug. So before recommending a change, confirm with a clone that *would* have triggered it, e.g. preview a CIEL concept with an ICD-10 mapping that PIH already has, or check OCL's release notes. Any change to the skill goes through a PR, like other plugin changes.
+
 To audit the whole source, download a released export (workflow 6, steps 1–2) and run the script with `--export export.json`. On 1.8.46 it found 29 external, 932 self and 282 internal problems. The script doesn't report the wrong `from_source_url` (#3012), which affects about 3,850 mappings, nearly every mapping a clone has copied.
 
 **Other clone behavior (expected; not a bug, confirmed with the dictionary maintainers):**

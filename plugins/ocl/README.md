@@ -82,6 +82,8 @@ If it finds a problem, Claude explains it and offers a fix, which it shows you b
 
 This catches the problems we know about, not every possible import error. If you can, still try the new release on a test server before it goes to live sites.
 
+Each check also watches for OCL fixing the clone bugs it works around (ocl_issues#3012 and #3013). If it looks like OCL has fixed them, Claude will tell you, and suggest updating the plugin to drop checks that are no longer needed. It never makes that change without asking.
+
 Developers can run the same check directly: `python3 -I plugins/ocl/skills/ocl-search/scripts/check_clone_mappings.py --unreleased`. Add `--since <version>` to check against an older release, e.g. `--since 1.8.46` reproduces the 1.8.47 failure.
 
 ## Troubleshooting
