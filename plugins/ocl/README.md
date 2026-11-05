@@ -25,6 +25,7 @@ Type this in Claude Code, then start a new session:
 - Show which concept sets a concept belongs to, or what's in a set.
 - Check whether a CIEL concept is already in PIH.
 - Preview, then clone, CIEL concepts into PIH, and check the clone for broken mappings.
+- Check everything changed since the last release for problems that would break the OpenMRS import, before you release.
 - Create and edit PIH concepts, names, translations and mappings.
 - Release a new version of the PIH source.
 
@@ -64,6 +65,24 @@ Just ask in plain language. For example:
 For changes, like cloning from CIEL, creating or editing concepts, adding mappings, or releasing a new version, Claude always shows you what it's about to change and waits for your OK.
 
 The PIH dictionary feeds live EMR systems at several sites, and a change made for one site can affect others. Check with the dictionary maintainers if you're unsure, especially before releasing a new version of the PIH source, since that includes everyone's unreleased edits.
+
+## Check before you release a new version
+
+A release that OpenMRS can't import stops the EMR from starting on every server that loads it. That's what happened with 1.8.47–1.8.50 (Jira UHM-9656). So before releasing, ask Claude to check what's about to go out. For example:
+
+- *Check everything that's changed in the PIH source since the last release, before I release a new version.*
+- *I just cloned some concepts from CIEL. Check them for problems.*
+
+Claude runs a read-only check on every concept changed since the last release, and tells you in plain language what it finds. It looks for:
+
+- **Name clashes:** a concept name whose ID is already used by a different concept on PIH servers, which would make the import fail. These are often names that were removed long ago and that OCL no longer shows. Claude checks them against a copy of a PIH database. The first time, it downloads about 33 MB.
+- **Broken mappings from cloning:** ICD-10 or LOINC codes that cloning from CIEL replaced with a PIH concept.
+
+If it finds a problem, Claude explains it and offers a fix, which it shows you before making any change. Release only once the check comes back clean.
+
+This catches the problems we know about, not every possible import error. If you can, still try the new release on a test server before it goes to live sites.
+
+Developers can run the same check directly: `python3 -I plugins/ocl/skills/ocl-search/scripts/check_clone_mappings.py --unreleased`. Add `--since <version>` to check against an older release, e.g. `--since 1.8.46` reproduces the 1.8.47 failure.
 
 ## Troubleshooting
 

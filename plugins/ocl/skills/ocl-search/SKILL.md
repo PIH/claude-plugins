@@ -126,9 +126,10 @@ SNOMED, IMO and other codes that aren't concepts in OCL (`to_concept_url` is nul
 
 **After every clone, check it:**
 ```bash
-python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --concept <new PIH ids…>
+python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --concept <new PIH ids…> --name-uuids
 ```
-The script is read-only and reads the token from the file.
+The script is read-only and reads the token from the file. `--name-uuids` also checks the new concepts' name UUIDs (see "Other clone behavior" below). The first time, it downloads a PIH database snapshot of about 33 MB to `~/.cache/ocl/`.
+- **`NAME-CLASH` / `DUP-NAME`:** must be fixed before the next release, because the OpenMRS import will fail. Propose giving that name a new UUID (workflow 3).
 - **`EXTERNAL`:** must be fixed. Tell the user, and propose retiring the bad mapping and adding the correct one with the same map type (workflow 4). The script shows two codes:
   - **"CIEL … has":** CIEL's mapping *today*.
   - **"PIH … is SAME-AS":** the code that was lost in the clone.
@@ -142,6 +143,10 @@ To audit the whole source, download a released export (workflow 6, steps 1–2) 
 
 **Other clone behavior (expected; not a bug, confirmed with the dictionary maintainers):**
 - Names keep their CIEL name UUIDs (`…BBBB`). PIH's auto-UUID for names isn't applied.
+  - **But this can break the OpenMRS import.** A PIH server may already hold that UUID on another concept's name, often one voided years ago that OCL no longer shows. The import then fails with `Duplicate entry '…BBBB' for key 'concept_name_uuid_index'`. The failed concept's mappings fail too, Initializer aborts the OCL load, and pihcore won't start.
+  - **It has happened.** Releases 1.8.47–1.8.50 broke this way (Jira UHM-9656): PIH 21797, cloned from CIEL 81457, reused CIEL name UUIDs that PIH servers had on 13277.
+  - **OCL can't detect it.** `--name-uuids` checks against a 2023 snapshot of a PIH database (the pihcore test DB), which catches most cases.
+  - **Possible prevention:** give cloned names fresh UUIDs right after cloning. Nothing at PIH is known to rely on names keeping CIEL's UUIDs, but that's a convention for the dictionary maintainers to decide, so only offer it.
 - All CIEL locales come along (nl, vi, ru, pt_BR, …), not only en/es/fr/ht.
 
 ### 2. Create a new concept in PIH
@@ -183,6 +188,15 @@ Before creating, search PIH and CIEL for an existing equivalent. If CIEL has one
 ### 5. Release a new PIH source version
 
 Changes reach OpenMRS servers through released source versions, not the live source.
+- **Check before releasing:** run the checker on everything changed since the last release:
+  ```bash
+  python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --unreleased
+  ```
+  It finds every PIH concept changed since the latest release (directly or through one of its mappings), runs the mapping checks, and checks name UUIDs against the PIH database snapshot.
+  - **`NAME-CLASH`, `DUP-NAME` or `EXTERNAL`:** the release would break the OpenMRS import, or lose a code. Fix these first.
+  - **Testing:** `--since <older version>` checks against an older release instead, e.g. `--since 1.8.46` reproduces the 1.8.47 failure.
+
+  This catches the problems we know about, not every possible import error. Once the release is out, loading its export on a test server is still the real test.
 - **Check the latest:** `GET /orgs/PIH/sources/PIH/versions/?limit=5&verbose=true` lists recent versions. They're numbered sequentially (`1.8.x`), each with a short description of what changed.
 - **Create the next one:** `POST /orgs/PIH/sources/PIH/versions/` with `{"id": "<next>", "description": "<what changed>", "released": true}`.
 - **Verify it:** `GET …/PIH/latest/` should return it, and `GET …/PIH/<version>/concepts/<id>/` reads that version's snapshot.

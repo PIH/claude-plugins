@@ -17,15 +17,26 @@ concept instead. It updates the code, the concept URL and the source name, but l
 
 It also reports concepts >= 20000 that have no proper SAME-AS PIH:<id> self-mapping.
 
+With --name-uuids it also checks concept NAME uuids. Clones keep CIEL's name uuids
+(…BBBB). PIH servers can already hold one of those uuids, e.g. on a name voided years
+ago, and then the OpenMRS import fails with "Duplicate entry … for key
+'concept_name_uuid_index'" (UHM-9656). OCL can't see voided server names, so this compares
+against a snapshot of a PIH database: the pihcore test DB (openmrs.sql, from 2023). It's
+downloaded once and cached in ~/.cache/ocl/. It reports:
+  name-clash     a name uuid that the snapshot has on a DIFFERENT concept (active or voided)
+  dup-name-uuid  the same name uuid on two PIH concepts in what's being checked
+
 Usage:
   check_clone_mappings.py --concept 21768 21760 ...   # live, from the OCL API
   check_clone_mappings.py --export export.json        # a whole released export
-  add --json for machine-readable output.
+  add --name-uuids to also check name uuids, and --json for machine-readable output.
 
 For "external" findings it looks up the CIEL source concept and suggests the correct code.
 The token is read from ~/.config/ocl/token. Run with `python3 -I`.
 """
 import argparse
+import csv
+import io
 import json
 import os
 import re
@@ -37,6 +48,10 @@ API = 'https://api.openconceptlab.org'
 PIH = '/orgs/PIH/sources/PIH/'
 CIEL = '/orgs/CIEL/sources/CIEL/'
 INTERNAL_TYPES = {'Q-AND-A', 'CONCEPT-SET'}
+DB_SNAPSHOT_URL = ('https://raw.githubusercontent.com/PIH/openmrs-module-pihcore/master/'
+                   'api/src/test/resources/event/openmrs.sql')
+DB_SNAPSHOT_CACHE = os.path.expanduser('~/.cache/ocl/pihcore-openmrs.sql')
+UUID_RE = re.compile(r'[0-9A-Za-z-]{36}')
 _cache = {}
 
 
@@ -70,6 +85,85 @@ def load_live(ids):
         concepts[cid] = c
         mappings.extend(c.get('mappings') or [])
     return concepts, mappings
+
+
+def changed_since(version):
+    """PIH concept ids changed (themselves or via one of their mappings) after release `version`."""
+    cutoff = get(f'{PIH}{urllib.parse.quote(version)}/')['created_on']
+    ids = set()
+    for kind, key in (('concepts', 'id'), ('mappings', 'from_concept_code')):
+        page = 1
+        while True:
+            items = get(f'{PIH}{kind}/?sortDesc=last_update&limit=200&page={page}')
+            fresh = [i for i in items if (i.get('version_updated_on') or '') > cutoff]
+            ids.update(i[key] for i in fresh)
+            if len(fresh) < len(items) or len(items) < 200:
+                break
+            page += 1
+    return cutoff, sorted(ids, key=lambda x: (not x.isdigit(), int(x) if x.isdigit() else 0, x))
+
+
+def load_db_snapshot(refresh=False):
+    """{name_uuid: (db_concept_uuid, name, locale, voided)} from the pihcore test DB dump."""
+    if refresh or not os.path.exists(DB_SNAPSHOT_CACHE):
+        os.makedirs(os.path.dirname(DB_SNAPSHOT_CACHE), exist_ok=True)
+        print(f'Downloading PIH DB snapshot to {DB_SNAPSHOT_CACHE} (about 33 MB)…', file=sys.stderr)
+        urllib.request.urlretrieve(DB_SNAPSHOT_URL, DB_SNAPSHOT_CACHE)
+    with open(DB_SNAPSHOT_CACHE, encoding='utf-8', errors='replace') as f:
+        sql = f.read()
+
+    def rows(table):
+        for blk in re.findall(r'INSERT INTO `%s` VALUES (.*?);\n' % table, sql, re.S):
+            cur, depth, quoted, esc = '', 0, False, False
+            for ch in blk:
+                if quoted:
+                    cur += ch
+                    if esc:
+                        esc = False
+                    elif ch == '\\':
+                        esc = True
+                    elif ch == "'":
+                        quoted = False
+                    continue
+                if ch == "'":
+                    quoted = True
+                    cur += ch
+                elif ch == '(' and depth == 0:
+                    depth, cur = 1, ''
+                elif ch == ')' and depth == 1:
+                    depth = 0
+                    yield next(csv.reader(io.StringIO(cur), quotechar="'", escapechar='\\'))
+                elif depth:
+                    cur += ch
+
+    concept_uuid = {r[0]: r[-1] for r in rows('concept')}
+    names = {}
+    # concept_name columns: concept_name_id, concept_id, name, locale, locale_preferred, creator,
+    # date_created, concept_name_type, voided, voided_by, date_voided, void_reason, uuid, ...
+    for r in rows('concept_name'):
+        uuid = next((x for x in r[12:] if UUID_RE.fullmatch(x or '')), None)
+        if uuid:
+            names[uuid] = (concept_uuid.get(r[1]), r[2], r[3], r[8] == '1')
+    return names
+
+
+def check_name_uuids(concepts, db_names):
+    findings, seen = [], {}
+    for cid, c in concepts.items():
+        for n in c.get('names') or []:
+            u = n.get('external_id')
+            if not u:
+                continue
+            if u in seen and seen[u] != cid:
+                findings.append({'kind': 'dup-name-uuid', 'concept': cid, 'other_concept': seen[u],
+                                 'name': n['name'], 'name_uuid': u})
+            seen.setdefault(u, cid)
+            hit = db_names.get(u)
+            if hit and hit[0] != c.get('external_id'):
+                findings.append({'kind': 'name-clash', 'concept': cid, 'name': n['name'], 'locale': n.get('locale'),
+                                 'name_uuid': u, 'db_concept_uuid': hit[0], 'db_name': hit[1],
+                                 'db_voided': hit[3]})
+    return findings
 
 
 def load_export(path):
@@ -111,10 +205,23 @@ def main():
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument('--concept', nargs='+', metavar='PIH_ID')
     g.add_argument('--export', metavar='EXPORT_JSON')
+    g.add_argument('--unreleased', action='store_true',
+                   help='check every PIH concept changed since the latest release (a pre-release check)')
+    p.add_argument('--since', metavar='VERSION',
+                   help='with --unreleased: compare against this release instead of the latest, e.g. 1.8.46')
+    p.add_argument('--name-uuids', action='store_true',
+                   help='also check name uuids against a PIH DB snapshot (implied by --unreleased)')
+    p.add_argument('--refresh-snapshot', action='store_true', help='re-download the PIH DB snapshot')
     p.add_argument('--json', action='store_true')
     a = p.parse_args()
 
-    live = bool(a.concept)
+    if a.unreleased:
+        version = a.since or get(f'{PIH}latest/')['id']
+        cutoff, ids = changed_since(version)
+        print(f'Checking {len(ids)} PIH concept(s) changed since {version} ({cutoff[:16]}Z): '
+              f'{" ".join(ids) or "(none)"}', file=sys.stderr)
+        a.concept, a.name_uuids = ids, True
+    live = a.concept is not None
     concepts, mappings = load_live(a.concept) if live else load_export(a.export)
     by_from = {}
     for m in mappings:
@@ -149,6 +256,9 @@ def main():
             findings.append({'kind': 'no-self-mapping', 'concept': cid, 'name': name_of(c),
                              'has_bogus_self': cid in bogus_self})
 
+    if a.name_uuids:
+        findings.extend(check_name_uuids(concepts, load_db_snapshot(a.refresh_snapshot)))
+
     if a.json:
         json.dump(findings, sys.stdout, indent=1)
         print()
@@ -158,9 +268,16 @@ def main():
     for f in findings:
         counts[f['kind']] = counts.get(f['kind'], 0) + 1
     print('Summary:', ', '.join(f'{k}={v}' for k, v in sorted(counts.items())) or 'no problems found')
-    order = {'external': 0, 'self': 1, 'no-self-mapping': 2, 'internal': 3}
+    order = {'name-clash': 0, 'dup-name-uuid': 1, 'external': 2, 'self': 3, 'no-self-mapping': 4, 'internal': 5}
     for f in sorted(findings, key=lambda f: (order[f['kind']], int(f['concept']) if f['concept'].isdigit() else 0)):
-        if f['kind'] == 'external':
+        if f['kind'] == 'name-clash':
+            print(f"NAME-CLASH PIH {f['concept']} name '{f['name']}' ({f['locale']}) uuid {f['name_uuid']} is already on "
+                  f"another concept ({f['db_concept_uuid']}) in PIH databases, as '{f['db_name']}'"
+                  f"{' (voided)' if f['db_voided'] else ''}. The OpenMRS import WILL FAIL.")
+        elif f['kind'] == 'dup-name-uuid':
+            print(f"DUP-NAME  PIH {f['concept']} name '{f['name']}' uuid {f['name_uuid']} is also used by PIH "
+                  f"{f['other_concept']}. The OpenMRS import will fail.")
+        elif f['kind'] == 'external':
             print(f"EXTERNAL  mapping {f['mapping']}: PIH {f['concept']} {f['map_type']} {short(f['to_source_url'])} "
                   f"rewritten to PIH {f['to_concept_code']} {f['pih_target_name']}; "
                   f"CIEL {'/'.join(f['ciel_ids']) or '?'} has {'/'.join(f['correct_from_ciel']) or '(none)'}; "
