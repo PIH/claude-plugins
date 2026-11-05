@@ -16,7 +16,7 @@ Type this in Claude Code, then start a new session:
 
 | | |
 |---|---|
-| **Skill: `ocl-search`** | Loads automatically when you ask about OCL, CIEL, or PIH concepts. It teaches Claude the OCL API and how the PIH source is organized: ID numbering, mapping conventions, how concept sets are stored, and how to clone from CIEL, create and edit concepts, add mappings, and release source versions safely. Includes a read-only script that checks cloned concepts (or a whole export) for mappings the OCL clone got wrong. |
+| **Skill: `ocl-search`** | Loads automatically when you ask about OCL, CIEL, or PIH concepts. It teaches Claude the OCL API and how the PIH source is organized: ID numbering, mapping conventions, how concept sets are stored, and how to clone from CIEL, create and edit concepts, add mappings, and release source versions safely. Includes a read-only script that checks cloned concepts (or a whole export) for mappings the OCL clone got wrong, and a check that tells you when a newer version of this plugin is available. |
 | **Command: `/ocl:setup`** | Checks that your OCL API token is set up, and walks you through it if not. |
 
 ## What it can do
@@ -85,6 +85,10 @@ This catches the problems we know about, not every possible import error. If you
 Each check also watches for OCL fixing the clone bugs it works around (ocl_issues#3012 and #3013). If it looks like OCL has fixed them, Claude will tell you, and suggest updating the plugin to drop checks that are no longer needed. It never makes that change without asking.
 
 Developers can run the same check directly: `python3 -I plugins/ocl/skills/ocl-search/scripts/check_clone_mappings.py --unreleased`. Add `--since <version>` to check against an older release, e.g. `--since 1.8.46` reproduces the 1.8.47 failure.
+
+## Staying up to date
+
+The first time you use the plugin in a session, Claude checks whether a newer version is out (at most once a day). If one is, it tells you and explains how to update. Newer versions can include better release checks, so update before releasing. To update without waiting to be told, see [Keeping plugins up to date](../../README.md#keeping-plugins-up-to-date) in the main README.
 
 ## Troubleshooting
 
