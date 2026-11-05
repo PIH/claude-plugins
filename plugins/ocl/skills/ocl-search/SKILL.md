@@ -9,6 +9,17 @@ The OCL web app (`https://app.v3.openconceptlab.org/`) is a front end for the RE
 
 Many users of this plugin aren't developers. Explain results in plain language, and keep raw JSON out of answers unless they ask for it.
 
+## Check for a plugin update (once per session)
+
+The first time this skill is used in a session, run:
+```bash
+python3 -I <this skill's base directory>/scripts/check_update.py
+```
+It compares this plugin's version with the latest on GitHub (read-only, no token, cached for a day) and always exits 0.
+- **`UPDATE AVAILABLE`:** tell the user in one or two plain sentences, before the answer to their request. Say that newer versions include checks that help avoid bad releases, and how to update: type `/plugin marketplace update pih`, then `/plugin` → **Installed** → `ocl` → **Update now**, then start a new session. Mention that `/plugin` → **Marketplaces** → `pih` → **Enable auto-update** keeps it current automatically. Then carry on with their request using the current version. Don't update anything yourself.
+- **Before a release** (see "Check before releasing" below), if the check said `UPDATE AVAILABLE`, recommend updating first, because the release checks may have improved.
+- **Anything else** (`up to date`, `ahead` (a local development copy), or `skipped`): say nothing about it.
+
 ## Authentication
 
 Anonymous API access is disabled, even for public content like CIEL (a 403 with `"Authentication required. Anonymous API access is disabled."`).
