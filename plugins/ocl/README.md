@@ -84,7 +84,9 @@ This catches the problems we know about, not every possible import error. If you
 
 Each check also watches for OCL fixing the clone bugs it works around (ocl_issues#3012 and #3013). If it looks like OCL has fixed them, Claude will tell you, and suggest updating the plugin to drop checks that are no longer needed. It never makes that change without asking.
 
-Developers can run the same check directly: `python3 -I plugins/ocl/skills/ocl-search/scripts/check_clone_mappings.py --unreleased`. Add `--since <version>` to check against an older release, e.g. `--since 1.8.46` reproduces the 1.8.47 failure.
+**The same check also runs automatically** when the PIH/pihemr "Update OCL export" GitHub Action puts a new release into the distro. If the release has errors, the Action stops and doesn't open a pull request, so the release never reaches servers.
+
+Developers can run the check directly: `python3 -I plugins/ocl/skills/ocl-search/scripts/ocl_release_check.py --unreleased`. Add `--since <version>` to check against an older release (e.g. `--since 1.8.46` reproduces the 1.8.47 failure), or use `--export <zip> --baseline <older zip>` to check an export the way the Action does. `--list-checks` lists the checks; the script's header explains how to add or retire one.
 
 ## Staying up to date
 
