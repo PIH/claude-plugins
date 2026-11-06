@@ -1,0 +1,30 @@
+# Runs the unit tests for plugin scripts (plugins/*/skills/*/scripts/test_*.py) on every pull request.
+# The ocl release check (ocl_release_check.py) is also run by the PIH/pihemr "Update OCL export" Action,
+# straight from main, so its tests guard that workflow too.
+name: Test plugin scripts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run tests
+        run: |
+          set -e
+          found=0
+          for dir in plugins/*/skills/*/scripts; do
+            if ls "$dir"/test_*.py >/dev/null 2>&1; then
+              found=1
+              echo "== $dir"
+              python3 -I -m unittest discover -s "$dir" -p 'test_*.py' -v
+            fi
+          done
+          [ "$found" = 1 ] || { echo "No tests found"; exit 1; }

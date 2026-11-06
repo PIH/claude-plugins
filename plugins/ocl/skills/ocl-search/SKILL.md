@@ -135,39 +135,39 @@ The response is keyed by expression, each with a `status` and a `bundle` listing
 
 SNOMED, IMO and other codes that aren't concepts in OCL (`to_concept_url` is null) aren't affected. The clone doesn't add a separate, proper `SAME-AS PIH:<id>` self-mapping. The `SELF` mapping in the first row stands in for it.
 
-**After every clone, check it:**
+**After every clone, check it** with the release check (see workflow 5):
 ```bash
-python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --concept <new PIH ids…> --name-uuids
+python3 -I <this skill's base directory>/scripts/ocl_release_check.py --concept <new PIH ids…>
 ```
-The script is read-only and reads the token from the file. `--name-uuids` also checks the new concepts' name UUIDs (see "Other clone behavior" below). The first time, it downloads a PIH database snapshot of about 33 MB to `~/.cache/ocl/`.
-- **`NAME-CLASH` / `DUP-NAME`:** must be fixed before the next release, because the OpenMRS import will fail. Propose giving that name a new UUID (workflow 3).
-- **`EXTERNAL`:** must be fixed. Tell the user, and propose retiring the bad mapping and adding the correct one with the same map type (workflow 4). The script shows two codes:
-  - **"CIEL … has":** CIEL's mapping *today*.
-  - **"PIH … is SAME-AS":** the code that was lost in the clone.
+It's read-only and reads the token from the file. It runs every check: `name-uuids` compares the new concepts' name UUIDs against a PIH database (see "Other clone behavior" below; the first run downloads a snapshot of about 33 MB to `~/.cache/ocl/`), and `clone-mappings` looks for the mapping bugs above. Each finding is an `ERROR` (fix before releasing) or a `WARNING` (report only):
+- **`name-uuids/name-clash` / `name-uuids/dup-name-uuid` (errors):** must be fixed before the next release, because the OpenMRS import will fail. Propose giving that name a new UUID (workflow 3). A `name-clash-handled` warning means the clash is already fixed on servers (e.g. by a distro Liquibase changeset); it's listed in `HANDLED_NAME_CLASHES` in the script.
+- **`clone-mappings/external` (error):** must be fixed. Tell the user, and propose retiring the bad mapping and adding the correct one with the same map type (workflow 4). The script shows two codes:
+  - **"Lost code":** the code that was lost in the clone.
+  - **"CIEL … today":** CIEL's mapping *today*.
 
   Right after a clone these match. For older clones, CIEL may have changed its mapping since, so if they differ, show the user both and let them choose. Also check whether someone already re-added the correct mapping by hand; if so, only retire the bad one.
-- **`SELF` / `NO-SELF` / `INTERNAL`:** leave them alone, and just mention them. OpenMRS already reads a `SELF` mapping as the usual `SAME-AS PIH:<id>`, and `INTERNAL` mappings point at the right concept. Cleaning these up is on hold until OCL fixes #3012/#3013. Retiring and re-adding them gives each mapping a new ID, which makes every server delete and recreate it on the next import, only to fix fields OpenMRS doesn't use.
+- **`clone-mappings/self` / `no-self-mapping` / `internal` (warnings):** leave them alone, and just mention them. OpenMRS already reads a `SELF` mapping as the usual `SAME-AS PIH:<id>`, and `INTERNAL` mappings point at the right concept. Cleaning these up is on hold until OCL fixes #3012/#3013. Retiring and re-adding them gives each mapping a new ID, which makes every server delete and recreate it on the next import, only to fix fields OpenMRS doesn't use.
 
 Don't try to fix a mapping in place with `PUT`. It hasn't been tested on these inconsistent records.
 
-**Watch for OCL fixing these bugs.** When run on live concepts (`--concept`, `--unreleased`), the script ends with an **"OCL fix watch"** section, but only if there's something to report. It shows:
+**Watch for OCL fixing these bugs.** When run on live concepts (`--concept`, `--unreleased`), the release check ends with an **"OCL fix watch"** section, but only if there's something to report. It shows:
 - **Issue state:** whether ocl_issues#3012 and #3013 are open or closed, from GitHub.
 - **Fresh clones:** for clones made after the issues were filed, whether the bugs still show up. If not, the copied mappings have a PIH `from_source_url`, there are no `SELF` or `EXTERNAL` findings, and the clones get fresh name UUIDs.
 
-If it prints **"POSSIBLE OCL FIX"**, tell the user. Then *suggest*, without doing it unprompted, reviewing whether the skill still needs the related guidance and checks:
+If it prints **"POSSIBLE OCL FIX"**, tell the user. Then *suggest*, without doing it unprompted, reviewing whether the skill still needs the related guidance, and whether the `clone-mappings` check can be retired:
 - **#3012:** the from-source note.
 - **#3013:** the `SELF`/`INTERNAL`/`EXTERNAL` handling, and the on-hold cleanup (UHM-9636 step 3), which OCL's fix might also cover.
-- **Name UUIDs:** the name-UUID caveat. Keep `--name-uuids` anyway, as any manual name edit can still clash.
+- **Name UUIDs:** the name-UUID caveat. Keep the `name-uuids` check anyway, as any manual name edit can still clash.
 
 One clean clone is weak evidence, since that concept may simply not have triggered the bug. So before recommending a change, confirm with a clone that *would* have triggered it, e.g. preview a CIEL concept with an ICD-10 mapping that PIH already has, or check OCL's release notes. Any change to the skill goes through a PR, like other plugin changes.
 
-To audit the whole source, download a released export (workflow 6, steps 1–2) and run the script with `--export export.json`. On 1.8.46 it found 29 external, 932 self and 282 internal problems. The script doesn't report the wrong `from_source_url` (#3012), which affects about 3,850 mappings, nearly every mapping a clone has copied.
+To audit the whole source, download a released export (workflow 6, steps 1–2) and run the release check with `--export <export.json or zip>`. On 1.8.46 it found 29 external, 932 self and 282 internal problems. It doesn't report the wrong `from_source_url` (#3012), which affects about 3,850 mappings, nearly every mapping a clone has copied.
 
 **Other clone behavior (expected; not a bug, confirmed with the dictionary maintainers):**
 - Names keep their CIEL name UUIDs (`…BBBB`). PIH's auto-UUID for names isn't applied.
   - **But this can break the OpenMRS import.** A PIH server may already hold that UUID on another concept's name, often one voided years ago that OCL no longer shows. The import then fails with `Duplicate entry '…BBBB' for key 'concept_name_uuid_index'`. The failed concept's mappings fail too, Initializer aborts the OCL load, and pihcore won't start.
   - **It has happened.** Releases 1.8.47–1.8.50 broke this way (Jira UHM-9656): PIH 21797, cloned from CIEL 81457, reused CIEL name UUIDs that PIH servers had on 13277.
-  - **OCL can't detect it.** `--name-uuids` checks against a 2023 snapshot of a PIH database (the pihcore test DB), which catches most cases.
+  - **OCL can't detect it.** The release check's `name-uuids` check compares against a 2023 snapshot of a PIH database (the pihcore test DB), which catches most cases.
   - **Possible prevention:** give cloned names fresh UUIDs right after cloning. Nothing at PIH is known to rely on names keeping CIEL's UUIDs, but that's a convention for the dictionary maintainers to decide, so only offer it.
 - All CIEL locales come along (nl, vi, ru, pt_BR, …), not only en/es/fr/ht.
 
@@ -210,15 +210,17 @@ Before creating, search PIH and CIEL for an existing equivalent. If CIEL has one
 ### 5. Release a new PIH source version
 
 Changes reach OpenMRS servers through released source versions, not the live source.
-- **Check before releasing:** run the checker on everything changed since the last release:
+- **Check before releasing:** run the release check on everything changed since the last release:
   ```bash
-  python3 -I <this skill's base directory>/scripts/check_clone_mappings.py --unreleased
+  python3 -I <this skill's base directory>/scripts/ocl_release_check.py --unreleased
   ```
-  It finds every PIH concept changed since the latest release (directly or through one of its mappings), runs the mapping checks, and checks name UUIDs against the PIH database snapshot.
-  - **`NAME-CLASH`, `DUP-NAME` or `EXTERNAL`:** the release would break the OpenMRS import, or lose a code. Fix these first.
+  It finds every PIH concept changed since the latest release (directly or through one of its mappings) and runs every check on them (`--list-checks` lists them).
+  - **Any `ERROR`:** the release would break the OpenMRS import, or lose a code. Fix these first. `WARNING`s are report-only.
   - **Testing:** `--since <older version>` checks against an older release instead, e.g. `--since 1.8.46` reproduces the 1.8.47 failure.
 
   This catches the problems we know about, not every possible import error. Once the release is out, loading its export on a test server is still the real test.
+- **The same check runs in GitHub.** PIH/pihemr's "Update OCL export" Action downloads `ocl_release_check.py` from this repo's `main` branch and runs it on the new export with `--export <new zip> --baseline <zip in the distro> --fail-on error`, so only concepts that changed are checked. If there's an error, it doesn't open the PR. So a release with errors never reaches the distro, even if nobody ran the check before releasing.
+- **Adding or retiring a check:** write a function that returns findings and register it in `CHECKS` in `ocl_release_check.py`, with a test in `test_ocl_release_check.py` (run `python3 -I -m unittest discover -s <scripts dir> -p 'test_*.py'`). Remove a check from `CHECKS` once it's no longer needed (e.g. when OCL fixes the bug behind it). The pihemr Action picks up changes automatically. Keep the command-line options and exit statuses it uses working (`--export`, `--baseline`, `--fail-on`, `--summary-md`; exit 0 OK, 1 errors, 2 couldn't run), or change that workflow in the same release.
 - **Check the latest:** `GET /orgs/PIH/sources/PIH/versions/?limit=5&verbose=true` lists recent versions. They're numbered sequentially (`1.8.x`), each with a short description of what changed.
 - **Create the next one:** `POST /orgs/PIH/sources/PIH/versions/` with `{"id": "<next>", "description": "<what changed>", "released": true}`.
 - **Verify it:** `GET …/PIH/latest/` should return it, and `GET …/PIH/<version>/concepts/<id>/` reads that version's snapshot.
