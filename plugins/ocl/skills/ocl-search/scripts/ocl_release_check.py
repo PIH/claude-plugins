@@ -18,7 +18,11 @@ Checks (see --list-checks):
 
 What to check (pick one):
   --unreleased [--since VERSION]   everything changed in the live PIH source since the latest (or given) release.
-                                   This is the PRE-RELEASE check.
+                                   This is the PRE-RELEASE check. It finds changes through OCL's search, which lags
+                                   writes by about 10-15 minutes: new concepts and mappings are also found by
+                                   fetching ids above the newest one search knows, but edits to existing ones made in
+                                   that window can be missed, so it warns when the newest change is that recent.
+                                   (Releases and exports are built from OCL's database, so they aren't affected.)
   --export NEW [--baseline OLD]    a released export (export.json or the OCL zip). With --baseline, only concepts
                                    that changed between OLD and NEW are checked. This is what CI runs on a new
                                    export before it goes into the distro.
@@ -36,11 +40,13 @@ main branch. Keep these options and exit statuses working, or update that workfl
 """
 import argparse
 import csv
+import datetime
 import io
 import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -54,6 +60,8 @@ DB_SNAPSHOT_URL = ('https://raw.githubusercontent.com/PIH/openmrs-module-pihcore
 DB_SNAPSHOT_CACHE = os.path.expanduser('~/.cache/ocl/pihcore-openmrs.sql')
 UUID_RE = re.compile(r'[0-9A-Za-z-]{36}')
 SEVERITY = {'warning': 1, 'error': 2}
+PROBE_MISSES = 10        # --unreleased: consecutive missing ids before probing for unindexed new items stops
+INDEX_LAG_MINUTES = 20   # --unreleased: warn if the newest change is more recent than this
 _cache = {}
 
 
@@ -79,6 +87,20 @@ def get(path):
         with urllib.request.urlopen(req, timeout=60) as r:
             _cache[path] = json.load(r)
     return _cache[path]
+
+
+def get_or_none(path):
+    """Like get(), but None for a 404 (not cached)."""
+    try:
+        return get(path)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+
+
+def parse_time(s):
+    return datetime.datetime.fromisoformat(s.replace('Z', '+00:00'))
 
 
 def source_of(url):
@@ -112,6 +134,7 @@ class Context:
         for m in mappings:
             self.by_from.setdefault(m['from_concept_code'], []).append(m)
         self.extra_reports = []  # extra sections a check wants printed (e.g. the OCL fix watch)
+        self.notes = []  # caveats about what was checked (e.g. OCL's search index lagging)
 
     def mappings_of(self, cid):
         if cid in self.by_from or not self.live:
@@ -128,20 +151,62 @@ def load_live(ids, label, refresh):
     return Context(concepts, mappings, ids, True, label, refresh)
 
 
-def changed_since(version):
-    """PIH concept ids changed (themselves, or via one of their mappings) after release `version`."""
+def probe_new(kind, after_id, misses=PROBE_MISSES):
+    """PIH `kind` items with numeric ids above `after_id`, fetched one by one rather than through search. PIH
+    concepts and mappings get sequential ids, so this finds new ones that OCL's search index doesn't have yet. Stops
+    after `misses` missing ids in a row."""
+    found, n, miss = [], after_id + 1, 0
+    while miss < misses:
+        item = get_or_none(f'{PIH}{kind}/{n}/')
+        if item is None:
+            miss += 1
+        else:
+            found.append(item)
+            miss = 0
+        n += 1
+    return found
+
+
+def changed_since(version, now=None):
+    """PIH concept ids changed (themselves, or via one of their mappings) after release `version`, and notes about
+    what may have been missed. Returns (cutoff, ids, notes).
+
+    Changes are found through OCL's search (sorted by last update), which lags writes by about 10-15 minutes. New
+    concepts and mappings are also found by probing the ids above the newest one search returned. Edits to existing
+    items can't be probed that way, so a note warns when the newest change is recent enough that some may be missing.
+    """
     cutoff = get(f'{PIH}{urllib.parse.quote(version)}/')['created_on']
-    ids = set()
+    ids, notes, newest = set(), [], ''
+
+    def changed(item):
+        return (item.get('version_updated_on') or item.get('updated_on') or '') > cutoff
+
     for kind, key in (('concepts', 'id'), ('mappings', 'from_concept_code')):
-        page = 1
+        page, max_id = 1, 0
         while True:
             items = get(f'{PIH}{kind}/?sortDesc=last_update&limit=200&page={page}')
-            fresh = [i for i in items if (i.get('version_updated_on') or '') > cutoff]
+            max_id = max([max_id] + [int(i['id']) for i in items if str(i.get('id', '')).isdigit()])
+            fresh = [i for i in items if changed(i)]
             ids.update(i[key] for i in fresh)
+            newest = max([newest] + [i.get('version_updated_on') or '' for i in fresh])
             if len(fresh) < len(items) or len(items) < 200:
                 break
             page += 1
-    return cutoff, sorted(ids, key=sort_key)
+        probed = [i for i in probe_new(kind, max_id) if changed(i)]
+        if probed:
+            ids.update(i[key] for i in probed)
+            newest = max([newest] + [i.get('version_updated_on') or i.get('updated_on') or '' for i in probed])
+            notes.append(f'{len(probed)} new {kind} ({probed[0]["id"]}'
+                         + (f' to {probed[-1]["id"]}' if len(probed) > 1 else '')
+                         + f") weren't in OCL's search index yet; they were found by fetching ids above {max_id} "
+                         'and are included.')
+    if newest:
+        age = ((now or datetime.datetime.now(datetime.timezone.utc)) - parse_time(newest)).total_seconds() / 60
+        if age < INDEX_LAG_MINUTES:
+            notes.append(f'The newest change is only {max(age, 0):.0f} minute(s) old. OCL\'s search index lags writes '
+                         'by about 10-15 minutes, so edits to existing concepts or mappings in that window may not '
+                         f'be checked. Re-run once {INDEX_LAG_MINUTES} minutes have passed, before releasing.')
+    return cutoff, sorted(ids, key=sort_key), notes
 
 
 def read_export(path):
@@ -402,6 +467,7 @@ def markdown(ctx, findings, checks):
     warnings = [f for f in findings if f['severity'] == 'warning']
     out = [f"### PIH OCL release check: {'❌ ' + str(len(errors)) + ' error(s)' if errors else '✅ no errors'}", '',
            f"Checked {len(ctx.scope)} concept(s): {ctx.label}. Checks: {', '.join(checks)}.", '']
+    out += [f'**Note:** {n}' for n in ctx.notes] + ([''] if ctx.notes else [])
     if errors:
         out += ['**Errors** (the OpenMRS import will fail, or wrong data will reach servers):', '']
         out += [f"- `{f['check']}` / {f['kind']}: {f['message']}" for f in errors] + ['']
@@ -444,10 +510,11 @@ def main(argv=None):
     try:
         if a.unreleased:
             version = a.since or get(f'{PIH}latest/')['id']
-            cutoff, ids = changed_since(version)
+            cutoff, ids, notes = changed_since(version)
             print(f'Checking {len(ids)} PIH concept(s) changed since {version} ({cutoff[:16]}Z): '
                   f'{" ".join(ids) or "(none)"}', file=sys.stderr)
             ctx = load_live(ids, f'changed in the live PIH source since {version}', a.refresh_snapshot)
+            ctx.notes = notes
         elif a.export:
             ctx, _ = load_export(a.export, a.baseline, a.refresh_snapshot)
         else:
@@ -471,6 +538,8 @@ def main(argv=None):
             counts[f"{f['severity']} {f['kind']}"] = counts.get(f"{f['severity']} {f['kind']}", 0) + 1
         print(f'Checked {len(ctx.scope)} concept(s): {ctx.label}')
         print('Summary:', ', '.join(f'{k}={v}' for k, v in sorted(counts.items())) or 'no problems found')
+        for n in ctx.notes:
+            print(f'NOTE    {n}')
         for f in sorted(findings, key=lambda f: (-SEVERITY[f['severity']], f['check'], sort_key(f['concept']))):
             print(f"{f['severity'].upper():<7} {f['check']}/{f['kind']}: {f['message']}")
         for r in ctx.extra_reports:
