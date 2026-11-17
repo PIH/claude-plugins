@@ -28,8 +28,18 @@ Use suggestion blocks only when the change is a few lines and exact. Otherwise d
 3. **What's good**, one or two lines.
 4. **Smaller things**, a short bullet list of nits and non-blocking points that got no inline comment.
 
+## Attribution line
+The summary and the ticket comment start with one italic line, for example:
+
+> _Review by Claude (AI assistant) with <user's name>, using the review-pr skill of PIH's openmrs Claude Code plugin (https://github.com/PIH/claude-plugins)._
+
+In Jira, keep that line free of `code` formatting: Jira ends the italics at an inline code span, so the rest of the line comes out plain. Use plain words (review-pr, openmrs) instead.
+
+## Examples in drafts
+When a comment illustrates a point with values (ids, codes, concept names), make them up and say so, for example "Example (hypothetical ids): terms 100 and 205 are both ICD-10-WHO A15.0 …". Readers otherwise ask whether the values are real rows.
+
 ## Ticket comment
-Per-requirement table, then follow-ups.
+Per-requirement table, then follow-ups. When first proposing it, say what it is in one line: a check of the PR against each requirement in the ticket.
 
 | Requirement | Status | Where |
 |---|---|---|

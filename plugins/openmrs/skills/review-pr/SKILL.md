@@ -7,7 +7,7 @@ description: Use when asked to review, look at or re-review someone else's pull 
 
 Review a PR for four things: does it do what the ticket asks, the `openmrs:contributing` rules, the `openmrs:pitfalls` mistakes, and CI. Everything you produce is a **draft**. Nothing is posted until the user approves that specific action.
 
-Arguments: `/openmrs:review-pr <PR ref> [ticket]`. A PR ref is a link, `owner/repo#N`, or repo plus number. Ask for whatever is missing.
+Arguments: `/openmrs:review-pr <PR ref> [ticket]`. A PR ref is a link, `owner/repo#N`, or repo plus number. Given only a ticket key, find the PR without reading the ticket: `gh search prs "<KEY>" --owner PIH` (and `--owner openmrs`, `--owner Bahmni` as needed) matches the key in PR titles, bodies and branches. Exactly one match: use it and say how you found it. None or several: ask. Ask for whatever else is missing.
 
 ## Hard rules (apply at every step)
 
@@ -25,8 +25,9 @@ Arguments: `/openmrs:review-pr <PR ref> [ticket]`. A PR ref is a link, `owner/re
    - **Security.** Problems in the PR's own new code (for example a missing `@Authorized` on a method the PR adds) are normal findings in the public review. An exploitable issue in already-released code, or a PR that appears to quietly fix one, goes **only in the private note**, with a suggestion to report it privately. Public drafts (inline comments, summary, "what's good" praise, ticket comments) must not describe it.
    - Dismissed pitfalls script hits, with their one-line reasons, go in the private note, not in public drafts.
    - Never mention the user's private memory notes or unverified issues.
-6. **Never post on your own.** Every reply that has drafts ends with the planned-actions list (see Output) and waits for a decision per action. Approving one action never covers another. When a draft paraphrases internal context for a public repo, its action line says so.
+6. **Never post on your own.** Every reply that has drafts ends with the planned-actions list (see Output) and waits for a decision per action. Approving one action never covers another. When a draft paraphrases internal context for a public repo, its action line says so. **Whenever a draft changes** (an edit, a dropped point, an added line), the reply restates every draft that will be posted, in full, plus the planned actions, so the user approves exactly the text that gets posted. Don't show only the changed part.
 7. **OpenMRS Jira and Bahmni Jira comments are handed over:** give the text and the ticket link for the user to post. Don't plan to post them yourself.
+8. **Verify claims about other code.** A draft that states how code outside the diff behaves ("core rejects this", "the importer looks terms up by code") must rest on source you have actually read in this review. Note the file and line in the private note. If you can't check it, phrase it as a question or leave it out.
 
 ## Which ticket holds the requirements
 
@@ -43,6 +44,8 @@ Always say in the reply which ticket the requirements come from. `contributing`'
 2. state which ticket the requirements will come from (the rule above);
 3. give the review of the diff and CI, and draft the comments, marked **conditional**: the requirements check is pending until the user confirms and you've read the ticket. Don't claim to have read it.
 
+**After the ticket is read, revisit the conditional drafts**, not just the requirements table. The ticket can strengthen a finding (it states the behavior the PR deviates from) or weaken one (it rules out the case you worried about). Say which drafts changed and why, then restate them in full (rule 6).
+
 ## Flow
 
 1. **Identify.** `gh pr view <ref> --json number,title,body,author,baseRefName,headRefName,headRefOid,url,files,commits,reviews,comments`. Take the ticket key from the prompt, or from the PR title, body or branch. If the PR or ticket is ambiguous, ask (rule 1).
@@ -52,13 +55,17 @@ Always say in the reply which ticket the requirements come from. `contributing`'
    - **free-to-change PIH:** `pitfalls`, plus `contributing`'s upstream check.
    - **Bahmni:** the Bahmni process from `contributing`.
    - **other:** `pitfalls` only, and say so.
+
+   PIH distribution and configuration repos (for example `PIH/pihemr`, `PIH/openmrs-distro-rwandaemr`, `PIH/pihsl-emr`, other `*-distro*` and `*-config*` repos, Initializer content, Liquibase data migrations in them) are **free-to-change PIH**. They aren't modules, so `contributing`'s module lists don't name them: don't ask about them as unclassified.
 4. **Check requirements.** List each requirement and acceptance criterion, then mark it **met**, **partly met** or **missing**, citing `file:line` (or "not found"). A requirement with no code or no messages for it is missing, not met. Note any scope creep.
 5. **Review the code.** Load `openmrs:pitfalls` with the Skill tool and follow its review mode, using the base directory it reports: `gh pr diff <ref> | python3 <pitfalls dir>/scripts/review_diff.py`, then the area files the diff touches. Triage script hits and drop false positives (each dismissed hit and its one-line reason goes in the private note). Each finding names its category ID or rule and is marked **blocking** or **non-blocking**. If a sibling skill, the script or its files can't be used, review from what you have and say so in one line in the private note. Don't stop.
-6. **CI.** `gh pr checks <ref>`. For each failed check, `gh run view <run-id> --log-failed` and give the probable cause (test name, exception, `file:line`). Offer a local checkout and build, **always asking first**, only when: the repo has no CI or CI didn't run; CI is green but the change is in an area CI is known to miss (Liquibase upgrades, Hibernate mappings on MySQL/PostgreSQL vs H2); or the user asks. When CI ran and the logs explain the failure, don't offer a checkout. If CI isn't GitHub Actions or its logs can't be fetched, or Jira isn't reachable, say what couldn't be checked and continue with what's available.
+6. **CI.** `gh pr checks <ref>`. For each failed check, `gh run view <run-id> --log-failed` and give the probable cause (test name, exception, `file:line`). Offer a local checkout and build, **always asking first**, only when: the repo has no CI or CI didn't run; CI is green but the change is in an area CI is known to miss (Liquibase upgrades, Hibernate mappings on MySQL/PostgreSQL vs H2); or the user asks. When CI ran and the logs explain the failure, don't offer a checkout. Before calling a failure **unrelated** to the PR (a dependency that can't be resolved, an infrastructure error), check the base branch's recent runs (`gh run list --branch <base> --limit 5`) and say whether it fails there too, and what would turn the PR green (update from the base branch, publish an artifact, re-run). If CI isn't GitHub Actions or its logs can't be fetched, or Jira isn't reachable, say what couldn't be checked and continue with what's available.
 7. **Draft** using [references/comment-style.md](references/comment-style.md) (tone, examples). The essentials:
    - Inline comments: open with **blocking** or **nit/non-blocking**, then what, why (category ID or rule), and the fix. At most about 10. The rest go in "smaller things" in the summary.
    - Summary: the proposed verdict first, then the 3 to 5 top points, then what's good, in a line or two.
    - Ticket comment: a requirement / status / where table, then follow-ups (an upstream ticket needed, a backport to decide).
+   - Attribution: the summary and the ticket comment each start with one italic line saying the review was done by Claude (AI assistant) with the user, using the `review-pr` skill of PIH's `openmrs` Claude Code plugin, with a link to the plugin (https://github.com/PIH/claude-plugins). Inline comments don't need it.
+   - Examples: any example values in a draft (ids, codes, names) are made up, and the draft says so ("hypothetical ids"), so no reader takes them for real data.
    - Private note: things to raise in person, confidence per finding, exploitable issues in released code, dismissed script hits, anything skipped.
    - Anchoring: check that each inline comment's line is in the diff (added, removed or context lines of a hunk). Move any that aren't into the summary now, so the planned action shows what will actually be posted.
 8. **Plan and approve.** End with the planned-actions list and wait.
@@ -87,11 +94,11 @@ Use this when asked to re-review, or when the PR already has a review by the use
 3. **Requirements check** (or "pending ticket confirmation").
 4. **CI** status and probable cause of any failure.
 5. **Draft PR review**: proposed verdict, summary, inline comments as `path:line`.
-6. **Draft ticket comment**, saying where it goes and whether it's handed over.
+6. **Draft ticket comment**, saying where it goes and whether it's handed over. The first time you propose one, say in a line what it is: a table that checks the PR against each of the ticket's requirements (met, partly met or missing, and where), plus follow-ups. If the ticket hasn't been read yet, describe it instead of drafting it.
 7. **Private note** (never posted).
 8. **Planned actions** (REQUIRED, last). This is a numbered list, one action per line, each with its target and a content summary. For example:
    1. Post a PR review on owner/repo#N: request changes, 1 summary and 3 inline comments (`File.java:12`, ...); 1 more point is in the summary because its line is outside the diff.
-   2. Comment on UHM-456: requirements table, 1 follow-up.
+   2. Comment on UHM-456: a requirements table (each ticket requirement marked met, partly met or missing, with where in the PR), 1 follow-up.
    3. Hand over the comment for TRUNK-8888 (text above): you post it at https://issues.openmrs.org/browse/TRUNK-8888.
 
    Then ask: "For each action, tell me approve, edit or skip." Nothing has been posted. Nothing else goes after the list: put other questions and caveats (an unclassified repo, no `gh` in this session) in Notices or in the action's own line.
