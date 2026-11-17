@@ -146,5 +146,53 @@ class BaselineAndOutput(Base):
             self.assertIn(name, out)
 
 
+class UnreleasedIndexLag(Base):
+    """--unreleased finds changes through OCL search, which lags writes by about 10-15 minutes."""
+
+    CUTOFF = '2026-11-16T22:49:32Z'
+
+    def fake_api(self, search, items):
+        """search: {kind: [items search returns]}; items: {path: item} for direct fetches (else 404)."""
+        def fake_get(path):
+            if path == f'{PIH}1.8.59/':
+                return {'created_on': self.CUTOFF}
+            for kind in ('concepts', 'mappings'):
+                if path.startswith(f'{PIH}{kind}/?'):
+                    return search.get(kind, []) if 'page=1' in path else []
+            if path in items:
+                return items[path]
+            raise rc.urllib.error.HTTPError(path, 404, 'Not Found', None, None)
+        self._orig_get = rc.get
+        rc.get = fake_get
+        self.addCleanup(lambda: setattr(rc, 'get', self._orig_get))
+
+    def test_new_mappings_missing_from_search_are_found_by_probing(self):
+        old = {'id': '47051', 'from_concept_code': '20731', 'version_updated_on': '2026-11-16T21:53:27Z'}
+        new = {'id': '47053', 'from_concept_code': '11625', 'version_updated_on': '2026-11-17T15:01:49Z'}
+        self.fake_api({'concepts': [], 'mappings': [old]}, {f'{PIH}mappings/47053/': new})  # 47052 is a gap
+        now = rc.parse_time('2026-11-17T16:00:00Z')
+        _, ids, notes = rc.changed_since('1.8.59', now=now)
+        self.assertEqual(ids, ['11625'])
+        self.assertEqual(len(notes), 1)
+        self.assertIn("weren't in OCL's search index yet", notes[0])
+        self.assertIn('above 47051', notes[0])
+
+    def test_recent_change_warns_about_index_lag(self):
+        fresh = {'id': '6964', 'version_updated_on': '2026-11-17T14:34:11Z'}
+        self.fake_api({'concepts': [fresh], 'mappings': []}, {})
+        _, ids, notes = rc.changed_since('1.8.59', now=rc.parse_time('2026-11-17T14:40:00Z'))
+        self.assertEqual(ids, ['6964'])
+        self.assertTrue(any('minute(s) old' in n for n in notes), notes)
+        _, _, notes = rc.changed_since('1.8.59', now=rc.parse_time('2026-11-17T16:00:00Z'))
+        self.assertEqual(notes, [])
+
+    def test_already_released_items_found_by_probing_are_ignored(self):
+        search = {'mappings': [{'id': '100', 'from_concept_code': '1', 'version_updated_on': '2026-01-01T00:00:00Z'}]}
+        self.fake_api(search, {f'{PIH}mappings/101/': {'id': '101', 'from_concept_code': '2',
+                                                       'version_updated_on': '2026-11-01T00:00:00Z'}})
+        _, ids, notes = rc.changed_since('1.8.59', now=rc.parse_time('2026-11-17T16:00:00Z'))
+        self.assertEqual((ids, notes), ([], []))
+
+
 if __name__ == '__main__':
     unittest.main()
