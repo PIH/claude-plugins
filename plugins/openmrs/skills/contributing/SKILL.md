@@ -75,6 +75,10 @@ If you can't tell, say why and ask the user.
 
 Follow the standard OpenMRS pattern: a ticket in the right OpenMRS Jira project, a branch named for the ticket, and commit and PR titles prefixed with the key (`TRUNK-1234: ...`). Link the PR to the ticket, and the PIH ticket to the upstream ticket. Repos differ (Jira key, fork vs. branch, PR template), so check recent merged PRs in that repo and follow what you see. Bahmni modules use BAH tickets instead.
 
+### Tests
+
+Every upstream PR comes with tests: a fix needs a test that fails without it, a feature needs tests for its edges. CI doesn't cover everything. Module CI runs on H2 only, and no CI tests PostgreSQL. A Liquibase or mapping change needs a run on a real database, and a backport needs its tests run on the maintenance branch. Say in the PR what you tested. Before writing or running tests, read [references/testing.md](references/testing.md): which kind of test and base class to use, how to run tests, what CI misses, and O3 (Vitest/Jest, Playwright).
+
 ### 4. Reviewers
 
 Look at who is currently reviewing and merging in the repo (recent merged PRs, CODEOWNERS if present). Suggest a reviewer and confirm with the user. Requesting the review is a public step (see Public steps).
