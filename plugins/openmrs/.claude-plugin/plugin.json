@@ -1,6 +1,6 @@
 {
   "name": "openmrs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Rules for working in OpenMRS core and the shared core modules: keep shared code generic and FHIR-based, avoid breaking changes, follow the OpenMRS and Bahmni contribution process, backport and release the way PIH needs, check code and PR reviews against known OpenMRS mistakes, and review a colleague's PR against its ticket.",
   "author": {
     "name": "Partners In Health"
