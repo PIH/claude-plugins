@@ -1,0 +1,13 @@
+diff --git a/api/src/main/java/org/openmrs/api/ThingService.java b/api/src/main/java/org/openmrs/api/ThingService.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/ThingService.java
++++ b/api/src/main/java/org/openmrs/api/ThingService.java
+@@ -40,6 +40,6 @@
+ 	 * Gets a thing by uuid.
+ 	 * @param uuid the uuid
+ 	 */
+-	Thing getThingByUuid(String uuid);
++	Thing getThingByUuid(String uuid, boolean includeVoided);
+ 
+ 	Thing other();
+ }

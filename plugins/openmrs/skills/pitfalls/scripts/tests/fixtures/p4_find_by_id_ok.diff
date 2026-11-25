@@ -1,0 +1,10 @@
+diff --git a/frontend/src/visits/visit-table.component.tsx b/frontend/src/visits/visit-table.component.tsx
+index 1111111..2222222 100644
+--- a/frontend/src/visits/visit-table.component.tsx
++++ b/frontend/src/visits/visit-table.component.tsx
+@@ -60,4 +60,5 @@
+ 	const handleRowClick = (rowId: string) => {
++		const visit = visits.find((v) => v.uuid === rowId);
+ 		launchVisit(visit);
+ 	};
+ 	return <DataTable rows={rows} headers={headers} />;

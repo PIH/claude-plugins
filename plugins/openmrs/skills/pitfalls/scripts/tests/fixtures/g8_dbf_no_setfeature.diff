@@ -1,0 +1,8 @@
+diff --git a/api/src/main/java/org/openmrs/serialization/Ser.java b/api/src/main/java/org/openmrs/serialization/Ser.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/serialization/Ser.java
++++ b/api/src/main/java/org/openmrs/serialization/Ser.java
+@@ -20,2 +20,3 @@
+ 	public Document parse(InputStream in) {
++		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+ 		return dbf.newDocumentBuilder().parse(in);

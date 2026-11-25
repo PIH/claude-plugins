@@ -1,0 +1,10 @@
+diff --git a/api/src/main/java/org/openmrs/util/Dates.java b/api/src/main/java/org/openmrs/util/Dates.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/util/Dates.java
++++ b/api/src/main/java/org/openmrs/util/Dates.java
+@@ -20,2 +20,5 @@
+ 	public static Date parse(String s) throws ParseException {
++		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
++		sdf.setLenient(false);
++		return sdf.parse(s);
+ 	}

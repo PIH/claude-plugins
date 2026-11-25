@@ -25,7 +25,7 @@ Each plugin has its own page with setup steps, examples and tips.
 | Plugin | What it does |
 |---|---|
 | [`ocl`](plugins/ocl/README.md) | Search and maintain the PIH concept dictionary in Open Concept Lab (OCL): find concepts, see which sets they're in, pull concepts from CIEL, and add or edit PIH concepts and mappings. |
-| [`openmrs`](plugins/openmrs/README.md) | Rules for working in OpenMRS core and the shared core modules: keep shared code generic and FHIR-based, avoid breaking changes, and follow the OpenMRS and Bahmni process for tickets, Talk, reviews, backports and releases. |
+| [`openmrs`](plugins/openmrs/README.md) | Rules for working in OpenMRS core and the shared core modules: keep shared code generic and FHIR-based, avoid breaking changes, and follow the OpenMRS and Bahmni process for tickets, Talk, reviews, backports and releases. Also checks code and PR reviews against a catalog of known OpenMRS mistakes. |
 
 ---
 

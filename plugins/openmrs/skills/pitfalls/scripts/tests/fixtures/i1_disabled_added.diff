@@ -1,0 +1,8 @@
+diff --git a/api/src/test/java/org/openmrs/api/ThingServiceTest.java b/api/src/test/java/org/openmrs/api/ThingServiceTest.java
+index 1111111..2222222 100644
+--- a/api/src/test/java/org/openmrs/api/ThingServiceTest.java
++++ b/api/src/test/java/org/openmrs/api/ThingServiceTest.java
+@@ -50,2 +50,3 @@
+ 	@Test
++	@Disabled
+ 	public void shouldSaveThing() {

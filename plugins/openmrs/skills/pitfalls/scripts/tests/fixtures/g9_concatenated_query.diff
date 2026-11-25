@@ -1,0 +1,9 @@
+diff --git a/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java b/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java
++++ b/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java
+@@ -140,3 +140,3 @@
+ 	public List<Thing> search(String name) {
+-		Query q = session.createQuery("from Thing t where t.name = :name");
++		Query q = session.createQuery("from Thing t where t.name = '" + name + "'");
+ 		return q.list();

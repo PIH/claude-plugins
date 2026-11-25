@@ -1,0 +1,22 @@
+diff --git a/api/src/main/resources/liquibase-update-to-latest.xml b/api/src/main/resources/liquibase-update-to-latest.xml
+index 1111111..2222222 100644
+--- a/api/src/main/resources/liquibase-update-to-latest.xml
++++ b/api/src/main/resources/liquibase-update-to-latest.xml
+@@ -6953,17 +6953,15 @@
+ 	</changeSet>
+ 	
+ 	<changeSet id="1-increase-privilege-col-size-privilege" author="core">
+-        <validCheckSum>3:b5f33650ea723f2304f40fd60fde36df</validCheckSum>
+         <preConditions onFail="MARK_RAN">
+ 			<columnExists tableName="privilege" columnName="privilege"/>
+ 		</preConditions>
+ 		<comment>
+ 			Increasing the size of the privilege column in the privilege table
+ 		</comment>
+-        <dropForeignKeyConstraint constraintName="privilege_which_can_edit" baseTableName="person_attribute_type" />
+ 		<ext:modifyColumn tableName="privilege">
+ 		    <column name="privilege" type="varchar(255)">
+ 				<constraints nullable="false" />
+ 			</column>
+ 		</ext:modifyColumn>
+ 	</changeSet>

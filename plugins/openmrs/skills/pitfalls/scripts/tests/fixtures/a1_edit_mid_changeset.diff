@@ -1,0 +1,13 @@
+diff --git a/api/src/main/resources/liquibase-update-to-latest.xml b/api/src/main/resources/liquibase-update-to-latest.xml
+index 1111111..2222222 100644
+--- a/api/src/main/resources/liquibase-update-to-latest.xml
++++ b/api/src/main/resources/liquibase-update-to-latest.xml
+@@ -7010,7 +7010,8 @@
+         <preConditions onFail="MARK_RAN">
+             <tableExists tableName="visit"/>
+         </preConditions>
+         <addColumn tableName="visit">
+             <column name="note" type="varchar(255)"/>
++            <column name="extra" type="varchar(50)"/>
+         </addColumn>
+     </changeSet>

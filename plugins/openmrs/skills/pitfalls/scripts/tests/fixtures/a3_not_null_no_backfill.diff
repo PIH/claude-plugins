@@ -1,0 +1,15 @@
+diff --git a/api/src/main/resources/liquibase-update-to-latest.xml b/api/src/main/resources/liquibase-update-to-latest.xml
+index 1111111..2222222 100644
+--- a/api/src/main/resources/liquibase-update-to-latest.xml
++++ b/api/src/main/resources/liquibase-update-to-latest.xml
+@@ -7100,4 +7100,10 @@
+     </changeSet>
+ 
++    <changeSet id="20261103-visit-type-required" author="core">
++        <preConditions onFail="MARK_RAN">
++            <columnExists tableName="visit" columnName="type_id"/>
++        </preConditions>
++        <addNotNullConstraint tableName="visit" columnName="type_id" columnDataType="int"/>
++    </changeSet>
+ 
+     <changeSet id="existing-after" author="core">

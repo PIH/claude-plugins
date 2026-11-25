@@ -1,0 +1,14 @@
+diff --git a/api/src/main/resources/liquibase-update-to-latest.xml b/api/src/main/resources/liquibase-update-to-latest.xml
+index 1111111..2222222 100644
+--- a/api/src/main/resources/liquibase-update-to-latest.xml
++++ b/api/src/main/resources/liquibase-update-to-latest.xml
+@@ -7100,4 +7100,9 @@
+     </changeSet>
+ 
++    <changeSet id="20261103-add-visit-note" author="core">
++        <addColumn tableName="visit">
++            <column name="note" type="varchar(255)"/>
++        </addColumn>
++    </changeSet>
+ 
+     <changeSet id="existing-after" author="core">

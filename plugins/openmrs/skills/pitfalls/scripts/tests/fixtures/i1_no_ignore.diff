@@ -1,0 +1,9 @@
+diff --git a/api/src/test/java/org/openmrs/api/ThingServiceTest.java b/api/src/test/java/org/openmrs/api/ThingServiceTest.java
+index 1111111..2222222 100644
+--- a/api/src/test/java/org/openmrs/api/ThingServiceTest.java
++++ b/api/src/test/java/org/openmrs/api/ThingServiceTest.java
+@@ -50,1 +50,4 @@
+ 	@Test
++	public void shouldSaveThingAgain() {
++		assertNotNull(service.saveThing(new Thing()));
++	}

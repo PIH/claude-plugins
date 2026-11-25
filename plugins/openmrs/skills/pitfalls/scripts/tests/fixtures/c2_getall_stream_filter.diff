@@ -1,0 +1,9 @@
+diff --git a/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java b/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java
++++ b/api/src/main/java/org/openmrs/api/db/hibernate/HibernateThingDAO.java
+@@ -100,3 +100,3 @@
+ 	public List<Thing> getActiveThings() {
+-		return sessionFactory.getCurrentSession().createCriteria(Thing.class).add(Restrictions.eq("retired", false)).list();
++		return getAllThings(false).stream().filter(t -> !t.getRetired()).collect(Collectors.toList());
+ 	}

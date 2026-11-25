@@ -1,0 +1,14 @@
+diff --git a/api/src/main/java/org/openmrs/api/ThingService.java b/api/src/main/java/org/openmrs/api/ThingService.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/ThingService.java
++++ b/api/src/main/java/org/openmrs/api/ThingService.java
+@@ -30,5 +30,9 @@
+ 	@Authorized({ PrivilegeConstants.GET_THINGS })
+ 	Thing getThing(Integer id);
+ 
++	/**
++	 * Gets a thing, see {@link Thing}
++	 */
++	Thing getThingByUuid(String uuid);
+ 
+ }

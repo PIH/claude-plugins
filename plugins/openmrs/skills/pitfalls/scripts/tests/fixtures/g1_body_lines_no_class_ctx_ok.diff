@@ -1,0 +1,13 @@
+diff --git a/api/src/main/java/org/pih/module/api/FooService.java b/api/src/main/java/org/pih/module/api/FooService.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/pih/module/api/FooService.java
++++ b/api/src/main/java/org/pih/module/api/FooService.java
+@@ -60,2 +60,8 @@
+ 		}
++		validate(s);
++		throw new APIException("x");
++		return compute(s);
++	}
++
++	private void helper(String s) {
+ 	}

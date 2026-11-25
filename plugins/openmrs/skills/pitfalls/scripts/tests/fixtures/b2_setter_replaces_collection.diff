@@ -1,0 +1,14 @@
+diff --git a/api/src/main/java/org/openmrs/Thing.java b/api/src/main/java/org/openmrs/Thing.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/Thing.java
++++ b/api/src/main/java/org/openmrs/Thing.java
+@@ -80,8 +80,7 @@
+ 	public Set<Child> getChildren() {
+ 		return children;
+ 	}
+ 
+ 	public void setChildren(Set<Child> children) {
+-		this.children.clear();
+-		this.children.addAll(children);
++		this.children = new HashSet<>(children);
+ 	}

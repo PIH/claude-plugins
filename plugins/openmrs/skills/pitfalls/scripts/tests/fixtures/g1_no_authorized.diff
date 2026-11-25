@@ -1,0 +1,13 @@
+diff --git a/api/src/main/java/org/openmrs/api/ThingService.java b/api/src/main/java/org/openmrs/api/ThingService.java
+index 1111111..2222222 100644
+--- a/api/src/main/java/org/openmrs/api/ThingService.java
++++ b/api/src/main/java/org/openmrs/api/ThingService.java
+@@ -30,7 +30,8 @@
+ public interface ThingService extends OpenmrsService {
+ 
+ 	@Authorized({ PrivilegeConstants.GET_THINGS })
+ 	Thing getThing(Integer id);
+ 
++	Thing getThingByUuid(String uuid);
+ 
+ }
