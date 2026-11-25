@@ -16,7 +16,7 @@ Type this in Claude Code, then start a new session:
 
 | | |
 |---|---|
-| **Skill: `ocl-search`** | Loads automatically when you ask about OCL, CIEL, or PIH concepts. It teaches Claude the OCL API and how the PIH source is organized: ID numbering, mapping conventions, how concept sets are stored, and how to clone from CIEL, create and edit concepts, add mappings, and release source versions safely. |
+| **Skill: `ocl-search`** | Loads automatically when you ask about OCL, CIEL, or PIH concepts. It teaches Claude the OCL API and how the PIH source is organized: ID numbering, mapping conventions, how concept sets are stored, and how to clone from CIEL, create and edit concepts, add mappings, and release source versions safely. Includes a read-only script that checks cloned concepts (or a whole export) for mappings the OCL clone got wrong, and a check that tells you when a newer version of this plugin is available. |
 | **Command: `/ocl:setup`** | Checks that your OCL API token is set up, and walks you through it if not. |
 
 ## What it can do
@@ -24,7 +24,8 @@ Type this in Claude Code, then start a new session:
 - Search the PIH and CIEL dictionaries, and give you links to view the full concepts in OCL.
 - Show which concept sets a concept belongs to, or what's in a set.
 - Check whether a CIEL concept is already in PIH.
-- Preview, then clone, CIEL concepts into PIH.
+- Preview, then clone, CIEL concepts into PIH, and check the clone for broken mappings.
+- Check everything changed since the last release for problems that would break the OpenMRS import, before you release.
 - Create and edit PIH concepts, names, translations and mappings.
 - Release a new version of the PIH source.
 
@@ -64,6 +65,34 @@ Just ask in plain language. For example:
 For changes, like cloning from CIEL, creating or editing concepts, adding mappings, or releasing a new version, Claude always shows you what it's about to change and waits for your OK.
 
 The PIH dictionary feeds live EMR systems at several sites, and a change made for one site can affect others. Check with the dictionary maintainers if you're unsure, especially before releasing a new version of the PIH source, since that includes everyone's unreleased edits.
+
+## Check before you release a new version
+
+A release that OpenMRS can't import stops the EMR from starting on every server that loads it. That's what happened with 1.8.47–1.8.50 (Jira UHM-9656). So before releasing, ask Claude to check what's about to go out. For example:
+
+- *Check everything that's changed in the PIH source since the last release, before I release a new version.*
+- *I just cloned some concepts from CIEL. Check them for problems.*
+
+Claude runs a read-only check on every concept changed since the last release, and tells you in plain language what it finds. It looks for:
+
+- **Name clashes:** a concept name whose ID is already used by a different concept on PIH servers, which would make the import fail. These are often names that were removed long ago and that OCL no longer shows. Claude checks them against a copy of a PIH database. The first time, it downloads about 33 MB.
+- **Broken mappings from cloning:** ICD-10 or LOINC codes that cloning from CIEL replaced with a PIH concept.
+
+If it finds a problem, Claude explains it and offers a fix, which it shows you before making any change. Release only once the check comes back clean.
+
+This catches the problems we know about, not every possible import error. If you can, still try the new release on a test server before it goes to live sites.
+
+Each check also watches for OCL fixing the clone bugs it works around (ocl_issues#3012 and #3013). If it looks like OCL has fixed them, Claude will tell you, and suggest updating the plugin to drop checks that are no longer needed. It never makes that change without asking.
+
+**The same check also runs automatically** when the PIH/pihemr "Update OCL export" GitHub Action puts a new release into the distro. If the release has errors, the Action stops and doesn't open a pull request, so the release never reaches servers.
+
+**Then it test-loads the release on a real OpenMRS database.** The release check only catches problems we already know about, so the Action (and Claude, when you ask it to put a release into the distro) also starts the ZL EMR with the new export on a copy of the nightly ZL seed database and checks that the import finished without errors. It takes about 5–10 minutes; tick *Skip the load test* in the Action, or tell Claude to skip it, when you can't wait. The PR says when it was skipped. The test is pihemr's `scripts/ocl-load-test.sh`.
+
+Developers can run the check directly: `python3 -I plugins/ocl/skills/ocl-search/scripts/ocl_release_check.py --unreleased`. Add `--since <version>` to check against an older release (e.g. `--since 1.8.46` reproduces the 1.8.47 failure), or use `--export <zip> --baseline <older zip>` to check an export the way the Action does. `--list-checks` lists the checks; the script's header explains how to add or retire one.
+
+## Staying up to date
+
+The first time you use the plugin in a session, Claude checks whether a newer version is out (at most once a day). If one is, it tells you and explains how to update. Newer versions can include better release checks, so update before releasing. To update without waiting to be told, see [Keeping plugins up to date](../../README.md#keeping-plugins-up-to-date) in the main README.
 
 ## Troubleshooting
 
