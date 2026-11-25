@@ -15,6 +15,9 @@ Checks (see --list-checks):
                   LOINC...) replaced by a PIH concept (error); CIEL self-mappings and answer/set mappings with stale
                   source urls, and concepts >= 20000 with no SAME-AS PIH self-mapping (warnings). On live runs it
                   also watches for OCL fixing these bugs ("OCL fix watch").
+  missing-concepts  1.8.66. Mappings (retired ones too) whose from concept, or whose Q-AND-A / CONCEPT-SET target, is
+                  not in PIH, e.g. because the concept was deleted from OCL but its mappings were only retired. The
+                  OpenMRS import fails on each one.
 
 What to check (pick one):
   --unreleased [--since VERSION]   everything changed in the live PIH source since the latest (or given) release.
@@ -142,12 +145,29 @@ class Context:
         return get(f'{PIH}concepts/{urllib.parse.quote(cid)}/?includeMappings=true').get('mappings') or []
 
 
+def all_mappings_from(cid):
+    """All mappings from PIH concept `cid`, retired ones included (includeMappings leaves those out). This also works
+    for a concept that was deleted from OCL while its mappings were only retired."""
+    found, page = [], 1
+    while True:
+        items = get(f'{PIH}mappings/?fromConcept={urllib.parse.quote(cid)}&includeRetired=true&limit=200&page={page}')
+        found.extend(m for m in items if m['from_concept_code'] == cid)
+        if len(items) < 200:
+            return found
+        page += 1
+
+
 def load_live(ids, label, refresh):
     concepts, mappings = {}, []
     for cid in ids:
-        c = get(f'{PIH}concepts/{urllib.parse.quote(cid)}/?includeMappings=true&verbose=true')
-        concepts[cid] = c
-        mappings.extend(m for m in c.get('mappings') or [] if m['from_concept_code'] == cid)
+        c = get_or_none(f'{PIH}concepts/{urllib.parse.quote(cid)}/?includeMappings=true&verbose=true')
+        have = set()
+        if c is not None:  # None: deleted from OCL; only its leftover mappings are checked
+            concepts[cid] = c
+            own = [m for m in c.get('mappings') or [] if m['from_concept_code'] == cid]
+            mappings.extend(own)
+            have = {m['id'] for m in own}
+        mappings.extend(m for m in all_mappings_from(cid) if m['id'] not in have)
     return Context(concepts, mappings, ids, True, label, refresh)
 
 
@@ -183,8 +203,8 @@ def changed_since(version, now=None):
 
     for kind, key in (('concepts', 'id'), ('mappings', 'from_concept_code')):
         page, max_id = 1, 0
-        while True:
-            items = get(f'{PIH}{kind}/?sortDesc=last_update&limit=200&page={page}')
+        while True:  # includeRetired: retiring something is a change too, and search leaves retired items out
+            items = get(f'{PIH}{kind}/?sortDesc=last_update&limit=200&page={page}&includeRetired=true')
             max_id = max([max_id] + [int(i['id']) for i in items if str(i.get('id', '')).isdigit()])
             fresh = [i for i in items if changed(i)]
             ids.update(i[key] for i in fresh)
@@ -221,7 +241,7 @@ def read_export(path):
 def load_export(path, baseline, refresh):
     d = read_export(path)
     concepts = {c['id']: c for c in d['concepts']}
-    scope = set(concepts)
+    scope = set(concepts) | {m['from_concept_code'] for m in d['mappings']}  # incl. mappings of deleted concepts
     label = f"export {d.get('id', '?')}"
     if baseline:
         b = read_export(baseline)
@@ -453,12 +473,61 @@ def fix_watch_report(ctx, findings):
     return '\n'.join(lines)
 
 
+# ---------------------------------------------------------------- check: missing-concepts
+
+def check_missing_concepts(ctx):
+    """Mappings the OpenMRS importer can't create because a concept they need isn't in PIH. Seen in 1.8.66: a bulk
+    import's concepts were deleted from OCL, but their mappings were only retired, and retired mappings still go into
+    the export. The importer fails on each one ("Cannot create mapping from concept with URL /, because the concept
+    has not been imported", or "... as no to concept is defined"), retired or not.
+    A SAME-AS (or other non-set, non-answer) mapping to a PIH code with no concept is fine: OpenMRS makes it a
+    reference term, as for the usual SAME-AS PIH:<id> self-mappings."""
+    exists = {}
+
+    def in_pih(cid):
+        if cid in ctx.concepts:
+            return True
+        if not ctx.live:
+            return False
+        if cid not in exists:
+            exists[cid] = get_or_none(f'{PIH}concepts/{urllib.parse.quote(cid)}/') is not None
+        return exists[cid]
+
+    findings = []
+    for m in ctx.mappings:
+        cid = m['from_concept_code']
+        if cid not in ctx.scope:
+            continue
+        where = 'OCL' if ctx.live else 'the export'
+        desc = f"mapping {m['id']}{' (retired)' if m.get('retired') else ''}: PIH {cid} {m['map_type']} " \
+               f"{short(m.get('to_source_url'))}:{m.get('to_concept_code')}"
+        if not m.get('from_concept_url') or not in_pih(cid):
+            findings.append({'check': 'missing-concepts', 'kind': 'from-missing', 'severity': 'error', 'concept': cid,
+                             'mapping': m['id'],
+                             'message': f'{desc}: PIH {cid} is not in {where} (deleted?). The OpenMRS import will fail '
+                                        'on this mapping. Ask OCL to delete it (hardDelete needs OCL staff); retiring '
+                                        'it is not enough.'})
+            continue
+        if m['map_type'] not in INTERNAL_TYPES:
+            continue
+        tcu, tcode = m.get('to_concept_url'), m.get('to_concept_code')
+        if not tcu or (source_of(tcu) == PIH and not in_pih(tcode)):
+            findings.append({'check': 'missing-concepts', 'kind': 'to-missing', 'severity': 'error', 'concept': cid,
+                             'mapping': m['id'],
+                             'message': f'{desc}: the {m["map_type"]} target {tcode} is not a concept in {where} '
+                                        '(deleted?). The OpenMRS import will fail on this mapping. Ask OCL to delete '
+                                        'it (hardDelete needs OCL staff); retiring it is not enough.'})
+    return findings
+
+
 # ---------------------------------------------------------------- registry and main
 
 CHECKS = {
     # name: (function, one-line description). Add new checks here; remove ones that are no longer needed.
     'name-uuids': (check_name_uuids, 'concept name uuids that clash with PIH databases or other PIH concepts (UHM-9656)'),
     'clone-mappings': (check_clone_mappings, "mappings OCL's $clone rewrote (UHM-9636, ocl_issues#3012/#3013)"),
+    'missing-concepts': (check_missing_concepts, 'mappings whose from concept, or answer/set-member target, is not in PIH '
+                                                 '(1.8.66)'),
 }
 
 
