@@ -22,7 +22,8 @@ def concept(cid, uuid, names, version='1', retired=False):
 
 
 def mapping(mid, frm, map_type, to_code, to_source_url, to_concept_url=None, version='1', retired=False):
-    return {'id': mid, 'from_concept_code': frm, 'map_type': map_type, 'to_concept_code': to_code,
+    return {'id': mid, 'from_concept_code': frm, 'from_concept_url': f'{PIH}concepts/{frm}/',
+            'map_type': map_type, 'to_concept_code': to_code,
             'to_source_url': to_source_url, 'to_concept_url': to_concept_url, 'version': version, 'retired': retired}
 
 
@@ -111,6 +112,69 @@ class CloneMappings(Base):
         self.assertIn('clone-mappings/no-self-mapping', out)
         code, _, _ = self.run_check('--export', e, '--checks', 'clone-mappings', '--fail-on', 'warning')
         self.assertEqual(code, 1)
+
+
+class MissingConcepts(Base):
+    """1.8.66: concepts deleted from OCL left retired mappings in the export, and the OpenMRS import failed on them."""
+
+    def setUp(self):
+        super().setUp()
+        self.lab_set = concept('21876', 'C1', [('Lab set', 'N1')])
+        self.answer = concept('21879', 'C2', [('Resistant', 'N2')])
+
+    def export_with(self, maps, version='1.1'):
+        return self.export(f'{version}.json', version, [self.lab_set, self.answer], maps)
+
+    def test_mapping_from_deleted_concept_is_an_error(self):
+        orphan = mapping('47374', '21895', 'Q-AND-A', '21879', PIH, f'{PIH}concepts/21879/', retired=True)
+        orphan['from_concept_url'] = ''  # what OCL exports once the concept is gone
+        code, out, _ = self.run_check('--export', self.export_with([orphan]), '--checks', 'missing-concepts',
+                                      '--fail-on', 'error')
+        self.assertEqual(code, 1)
+        self.assertIn('missing-concepts/from-missing', out)
+        self.assertIn('mapping 47374 (retired)', out)
+
+    def test_set_member_or_answer_that_is_not_a_concept_is_an_error(self):
+        member = mapping('47217', '21876', 'CONCEPT-SET', '21896', PIH, None, retired=True)
+        answer = mapping('47300', '21876', 'Q-AND-A', '21897', PIH, f'{PIH}concepts/21897/')
+        code, out, _ = self.run_check('--export', self.export_with([member, answer]), '--checks', 'missing-concepts',
+                                      '--fail-on', 'error')
+        self.assertEqual(code, 1)
+        self.assertEqual(out.count('missing-concepts/to-missing'), 2, out)
+
+    def test_reference_terms_and_good_mappings_are_fine(self):
+        maps = [self_map('m1', '21876'),
+                mapping('m2', '21876', 'SAME-AS', '1817', PIH, None),  # PIH reference term, no concept: OK in OpenMRS
+                mapping('m3', '21876', 'SAME-AS', 'L28.0', '/orgs/WHO/sources/ICD-10-WHO/', None),
+                mapping('m4', '21876', 'CONCEPT-SET', '21879', PIH, f'{PIH}concepts/21879/')]
+        for m in maps:
+            m['from_concept_url'] = f'{PIH}concepts/21876/'
+        code, out, _ = self.run_check('--export', self.export_with(maps), '--checks', 'missing-concepts',
+                                      '--fail-on', 'error')
+        self.assertEqual(code, 0, out)
+
+    def test_baseline_scope_includes_mappings_of_deleted_concepts(self):
+        old = self.export_with([], '1.0')
+        orphan = mapping('47374', '21895', 'Q-AND-A', '21879', PIH, f'{PIH}concepts/21879/', retired=True)
+        orphan['from_concept_url'] = ''
+        code, out, _ = self.run_check('--export', self.export_with([orphan]), '--baseline', old, '--fail-on', 'error')
+        self.assertEqual(code, 1, out)
+        self.assertIn('from-missing', out)
+
+    def test_live_deleted_concept_is_checked_through_its_retired_mappings(self):
+        orphan = mapping('47374', '21895', 'Q-AND-A', '21879', PIH, f'{PIH}concepts/21879/', retired=True)
+        orphan['from_concept_url'] = ''
+
+        def fake_get(path):
+            if path.startswith(f'{PIH}mappings/?fromConcept=21895&'):
+                return [orphan]
+            raise rc.urllib.error.HTTPError(path, 404, 'Not Found', None, None)  # 21895 is deleted
+        orig = rc.get
+        rc.get = fake_get
+        self.addCleanup(lambda: setattr(rc, 'get', orig))
+        ctx = rc.load_live(['21895'], 'test', False)
+        findings = rc.check_missing_concepts(ctx)
+        self.assertEqual([f['kind'] for f in findings], ['from-missing'])
 
 
 class BaselineAndOutput(Base):
